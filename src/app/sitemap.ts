@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = 'https://mainq.netlify.app';
+  const siteUrl = 'https://mainq.my.id';
  
   const routes = [
     '', // Homepage
