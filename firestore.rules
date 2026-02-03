@@ -1,0 +1,69 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for concise, readable, and reusable logic.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incomingDataIsOwnedByCurrentUser() {
+      return request.resource.data.userId == request.auth.uid;
+    }
+
+    function ownerIsImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    // This robustly checks that only 'views' is being incremented by 1.
+    function isIncrementingViews() {
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      return changedKeys.size() == 1 &&
+             'views' in changedKeys &&
+             request.resource.data.views == resource.data.views + 1;
+    }
+
+    match /users/{userId} {
+      // READ: Allow anyone to read public user profiles.
+      allow read: if true;
+      // WRITE: Only the owner of the profile can create, update, or delete it.
+      allow write: if isOwner(userId);
+    }
+
+    match /publishedGames/{gameId} {
+      // READ: Allow ANYONE to read ANY game data. This is essential for a public gallery.
+      allow read: if true;
+
+      // CREATE: Only signed-in users can create a game.
+      // The 'userId' in the new game data must match the creator's ID.
+      allow create: if isSignedIn() && incomingDataIsOwnedByCurrentUser();
+
+      // UPDATE: An update is allowed if:
+      // 1. The user is the owner and isn't changing the owner ID.
+      // OR
+      // 2. The update is just incrementing the 'views' count.
+      allow update: if (isSignedIn() && isOwner(resource.data.userId) && ownerIsImmutable()) || isIncrementingViews();
+
+      // DELETE: Only the owner of a game can delete it.
+      allow delete: if isSignedIn() && isOwner(resource.data.userId);
+
+      // Subcollection for comments
+      match /comments/{commentId} {
+        // READ: Allow anyone to read comments, but only if the parent game document exists.
+        allow read: if exists(/databases/$(database)/documents/publishedGames/$(gameId));
+
+        // CREATE: Any signed-in user can create a comment if the game exists.
+        // The new comment's userId must match the creator's ID.
+        allow create: if isSignedIn() && incomingDataIsOwnedByCurrentUser() && exists(/databases/$(database)/documents/publishedGames/$(gameId));
+
+        // UPDATE/DELETE: Only the owner of the comment can update or delete it if the game exists.
+        allow update, delete: if isSignedIn() && isOwner(resource.data.userId) && exists(/databases/$(database)/documents/publishedGames/$(gameId));
+      }
+    }
+  }
+}
