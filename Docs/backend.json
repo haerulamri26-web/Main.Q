@@ -1,0 +1,171 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the HTML Reader application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity, matches Firebase Auth UID."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "UploadedGame": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UploadedGame",
+      "type": "object",
+      "description": "Represents an HTML game uploaded by a user.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who uploaded the game."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user who uploaded the game."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the game."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the game."
+        },
+        "htmlCode": {
+          "type": "string",
+          "description": "The HTML code for the game."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date and time when the game was uploaded, as a server timestamp.",
+          "format": "date-time"
+        },
+        "class": {
+          "type": "string",
+          "description": "The target grade level for the game."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject matter the game is related to (e.g., Matematika, Fisika, Sejarah)."
+        },
+        "views": {
+          "type": "number",
+          "description": "Number of times the game has been viewed."
+        }
+      },
+      "required": [
+        "userId",
+        "authorName",
+        "title",
+        "htmlCode",
+        "uploadDate",
+        "class",
+        "subject",
+        "views"
+      ]
+    },
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's public profile information.",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography of the user."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the user's profile picture."
+        }
+      },
+      "required": [
+        "displayName"
+      ]
+    },
+    "Comment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Comment",
+      "type": "object",
+      "description": "Represents a comment on a game.",
+      "properties": {
+        "gameId": {
+          "type": "string",
+          "description": "Reference to the game being commented on."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who wrote the comment."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user who wrote the comment."
+        },
+        "authorPhotoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the commenter's profile picture."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the comment."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time when the comment was posted, as a server timestamp.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "gameId",
+        "userId",
+        "authorName",
+        "text",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "google.com"
+    ]
+  },
+  "firestore": {
+    "/publishedGames/{gameId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UploadedGame"
+      },
+      "description": "Stores published games for public access. Anyone can read, while creation, updates, and deletion are restricted to the content owner."
+    },
+    "/publishedGames/{gameId}/comments/{commentId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Comment"
+      },
+      "description": "Stores comments for a specific game. Anyone can read, signed-in users can create, and owners can delete/update."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UserProfile"
+      },
+      "description": "Stores public user profile data, editable by the owner."
+    }
+  }
+}
