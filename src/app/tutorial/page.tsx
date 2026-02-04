@@ -65,7 +65,8 @@ export default function TutorialPage() {
             <ul className="list-disc list-inside text-muted-foreground mt-2 space-y-1">
               <li><a href="https://chat.openai.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">ChatGPT</a></li>
               <li><a href="https://gemini.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Gemini</a></li>
-              <li><a href="https://copilot.microsoft.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Microsoft Copilot</a></li>
+              <li><a href="https://chat.qwen.ai/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Qwen</a></li>
+              <li><a href="https://www.canva.com/ai/code" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Canva</a></li>
             </ul>
             <p className="mt-4 text-muted-foreground">Semakin detail permintaan Anda (prompt), semakin bagus hasilnya.</p>
           </CardContent>
