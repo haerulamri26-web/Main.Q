@@ -93,7 +93,7 @@ export default function TutorialPage() {
             <div>
                 <h3 className="font-semibold text-lg mb-2">Prompt untuk AI (ChatGPT, Gemini, dll.)</h3>
                 <div className="bg-muted/50 p-4 rounded-md border text-sm text-foreground/80 font-mono whitespace-pre-wrap">
-                    {'buatkan saya website interaktif dengan tema [masukkan tema sesuai kebutuhan] dengan isi materi [isi dengan materi yang diinginkan atau bisa memasukkan tujuan pembejlajaran]\n\nTambahkan ketentuan:\n- Gunakan HTML, CSS, dan JavaScript\n- Semua kode harus dalam satu file'}
+                    {'buatkan saya website interaktif dengan tema [masukkan tema sesuai kebutuhan] dengan isi materi [isi dengan materi yang diinginkan atau bisa memasukkan tujuan pembejlajaran]\n\nTambahkan ketentuan:\n- Gunakan HTML, tailwindcss, dan JavaScript\n- Semua kode harus dalam satu file'}
                 </div>
             </div>
 
