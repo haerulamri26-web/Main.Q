@@ -7,6 +7,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AuthButtons } from '@/components/AuthButtons';
 import { cn } from '@/lib/utils';
 import { GoogleAnalytics } from '@/components/GoogleAnalytics';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'MAIN Q: Website Interaktif & Platform Game Edukasi',
@@ -43,7 +44,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          <GoogleAnalytics />
+          <Suspense fallback={null}>
+            <GoogleAnalytics />
+          </Suspense>
           <div className="flex flex-col min-h-screen">
             <header className="bg-card shadow-sm sticky top-0 z-50">
               <div className="container mx-auto px-4">
