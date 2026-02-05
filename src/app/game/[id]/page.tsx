@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -170,7 +171,7 @@ export default function GamePage() {
               </Link>
             </span>
           </div>
-          <p className="mt-2 text-muted-foreground max-w-prose">{game.description}</p>
+          <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{game.description}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 self-start pt-2">
@@ -302,3 +303,4 @@ export default function GamePage() {
     </div>
   );
 }
+    
