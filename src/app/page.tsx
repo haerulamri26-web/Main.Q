@@ -35,7 +35,7 @@ export default function Home() {
   const [selectedClass, setSelectedClass] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const GAMES_PER_PAGE = 20;
+  const GAMES_PER_PAGE = 10;
 
   const gamesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
