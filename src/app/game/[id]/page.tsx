@@ -1,10 +1,11 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
 import { useUser, useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle } from 'lucide-react';
+import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle, Shrink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useRef, useEffect, useState, type FormEvent } from 'react';
@@ -55,6 +56,7 @@ export default function GamePage() {
   const { toast } = useToast();
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const gameDocRef = useMemoFirebase(() => {
     if (!firestore || !gameId) return null;
@@ -69,6 +71,18 @@ export default function GamePage() {
   }, [firestore, gameId]);
 
   const { data: comments, isLoading: isLoadingComments } = useCollection<Comment>(commentsQuery);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (gameDocRef) {
@@ -87,11 +101,17 @@ export default function GamePage() {
   }, [game, gameId]);
 
   const handleFullscreen = () => {
-    const element = iframeContainerRef.current;
-    if (!element) return;
-    if (element.requestFullscreen) element.requestFullscreen();
-    else if ((element as any).webkitRequestFullscreen) (element as any).webkitRequestFullscreen();
-    else if ((element as any).msRequestFullscreen) (element as any).msRequestFullscreen();
+    if (isFullscreen) {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    } else {
+        const element = iframeContainerRef.current;
+        if (!element) return;
+        if (element.requestFullscreen) element.requestFullscreen();
+        else if ((element as any).webkitRequestFullscreen) (element as any).webkitRequestFullscreen();
+        else if ((element as any).msRequestFullscreen) (element as any).msRequestFullscreen();
+    }
   };
 
   const handleCopyLink = () => {
@@ -222,10 +242,10 @@ export default function GamePage() {
           variant="outline" 
           size="icon" 
           onClick={handleFullscreen} 
-          title="Layar Penuh"
+          title={isFullscreen ? "Keluar dari Layar Penuh" : "Layar Penuh"}
           className="absolute top-3 right-3 z-10 bg-black/30 text-white hover:bg-black/50 border-white/50"
         >
-          <Expand className="h-4 w-4" />
+          {isFullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
         </Button>
       </div>
 
