@@ -7,9 +7,9 @@ export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-12 animate-in fade-in-0 slide-in-from-top-4 duration-500">
       <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">Tentang MAIN Q</h1>
+        <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary">Tentang MAIN Q: Pelopor Website Interaktif Edukasi</h1>
         <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
-          Misi kami adalah merevolusi pendidikan dengan membuatnya lebih interaktif, menarik, dan menyenangkan melalui game.
+          Misi kami adalah merevolusi pendidikan sebagai website interaktif terdepan, membuat belajar lebih menarik dan menyenangkan melalui game.
         </p>
       </div>
 
@@ -23,7 +23,7 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              MAIN Q adalah platform inovatif tempat para guru dapat membuat, berbagi, dan menggunakan game edukasi berbasis HTML sederhana. Kami percaya bahwa belajar melalui permainan dapat meningkatkan retensi dan pemahaman materi secara signifikan.
+              MAIN Q adalah sebuah website interaktif inovatif tempat para guru dapat membuat dan berbagi game edukasi. Kami percaya belajar melalui permainan di sebuah website interaktif dapat meningkatkan retensi.
             </p>
           </CardContent>
         </Card>
@@ -55,6 +55,13 @@ export default function AboutPage() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="mt-16 text-center">
+        <h2 className="text-3xl font-bold font-headline">Perjalanan Kami</h2>
+        <p className="text-lg text-muted-foreground max-w-3xl mx-auto mt-4">
+            MAIN Q lahir dari sebuah ide sederhana: bagaimana jika belajar bisa semenyenangkan bermain game? Didirikan oleh Haerul Amri, seorang pengembang dengan hasrat untuk pendidikan, platform ini dibangun untuk menjembatani kesenjangan antara metode pengajaran tradisional dengan dunia digital yang dinamis. Kami percaya bahwa setiap guru adalah kreator, dan setiap siswa berhak mendapatkan pengalaman belajar terbaik. Perjalanan kami baru saja dimulai, dan kami mengundang Anda untuk menjadi bagian darinya.
+        </p>
       </div>
     </div>
   );
