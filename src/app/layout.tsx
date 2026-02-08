@@ -67,7 +67,10 @@ export default function RootLayout({
             <Toaster />
             <footer className="bg-card py-8 mt-8 border-t">
               <div className="container mx-auto px-4 text-center text-muted-foreground">
-                <div className="flex justify-center gap-6 mb-4">
+                <div className="flex justify-center flex-wrap gap-x-6 gap-y-2 mb-4">
+                  <Link href="/" className="text-sm hover:text-primary hover:underline">Beranda</Link>
+                  <Link href="/popular" className="text-sm hover:text-primary hover:underline">Game Populer</Link>
+                  <Link href="/tutorial" className="text-sm hover:text-primary hover:underline">Cara Membuat</Link>
                   <Link href="/about" className="text-sm hover:text-primary hover:underline">Tentang Kami</Link>
                   <Link href="/contact" className="text-sm hover:text-primary hover:underline">Kontak</Link>
                   <Link href="/privacy" className="text-sm hover:text-primary hover:underline">Kebijakan Privasi</Link>
