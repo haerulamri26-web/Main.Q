@@ -104,6 +104,23 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="mb-12 p-6 md:p-8 bg-card rounded-lg shadow-sm border animate-in fade-in-0 slide-in-from-top-6 duration-500 delay-50">
+        <h2 className="text-2xl md:text-3xl font-bold font-headline text-center mb-4">Apa itu MAIN Q?</h2>
+        <p className="text-muted-foreground text-center max-w-4xl mx-auto">
+            MAIN Q adalah sebuah revolusi dalam dunia pendidikan di Indonesia. Kami menyediakan platform gratis di mana para guru dapat berkreasi dan berbagi materi pembelajaran dalam format website interaktif yang menarik. Misi kami adalah membuat proses belajar menjadi sebuah petualangan yang seru, bukan lagi beban. Dengan MAIN Q, guru dapat dengan mudah mengubah materi ajar menjadi game edukasi tanpa perlu keahlian coding, berkat bantuan teknologi AI.
+        </p>
+        <div className="grid md:grid-cols-2 gap-6 mt-6 max-w-4xl mx-auto">
+            <div className="p-4 bg-background rounded-md">
+                <h3 className="font-bold text-lg text-primary">Untuk Para Guru</h3>
+                <p className="text-muted-foreground mt-1 text-sm">Buat materi ajar yang "lengket" di benak siswa. Unggah game buatan Anda, lacak popularitasnya, dan jadilah bagian dari komunitas pendidik inovatif. Bagikan karya Anda dan lihat bagaimana siswa dari seluruh negeri memainkan game Anda.</p>
+            </div>
+            <div className="p-4 bg-background rounded-md">
+                <h3 className="font-bold text-lg text-accent-foreground">Untuk Para Siswa</h3>
+                <p className="text-muted-foreground mt-1 text-sm">Belajar jadi tidak membosankan lagi! Jelajahi ribuan game edukasi dari berbagai mata pelajaran, mulai dari Matematika hingga Sejarah. Tantang dirimu sendiri, mainkan game buatan gurumu, dan temukan cara baru untuk memahami pelajaran.</p>
+            </div>
+        </div>
+      </section>
+
       <section className="mb-8 p-4 bg-card rounded-lg shadow-sm border animate-in fade-in-0 slide-in-from-top-8 duration-500 delay-100">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
           <div className="relative md:col-span-1">
@@ -174,7 +191,7 @@ export default function Home() {
                       srcDoc={game.htmlCode}
                       title={`Pratinjau ${game.title}`}
                       className="w-full h-full"
-                      sandbox="allow-scripts allow-same-origin"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals"
                       scrolling="no"
                     />
                     <Link
