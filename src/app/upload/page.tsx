@@ -150,6 +150,7 @@ export default function UploadPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="TK/PAUD">TK/PAUD</SelectItem>
                           <SelectItem value="Kelas 1 SD">Kelas 1 SD</SelectItem>
                           <SelectItem value="Kelas 2 SD">Kelas 2 SD</SelectItem>
                           <SelectItem value="Kelas 3 SD">Kelas 3 SD</SelectItem>
