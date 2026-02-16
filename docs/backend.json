@@ -76,6 +76,56 @@
         "views"
       ]
     },
+    "UploadedLab": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UploadedLab",
+      "type": "object",
+      "description": "Represents an HTML lab simulation uploaded by a user.",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who uploaded the lab."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user who uploaded the lab."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the lab simulation."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the lab simulation."
+        },
+        "htmlCode": {
+          "type": "string",
+          "description": "The HTML code for the lab simulation."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "The date and time when the lab was uploaded, as a server timestamp.",
+          "format": "date-time"
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject matter the lab is related to (e.g., Kimia, Fisika, Biologi)."
+        },
+        "views": {
+          "type": "number",
+          "description": "Number of times the lab has been viewed."
+        }
+      },
+      "required": [
+        "userId",
+        "authorName",
+        "title",
+        "htmlCode",
+        "uploadDate",
+        "subject",
+        "views"
+      ]
+    },
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
@@ -140,6 +190,47 @@
         "text",
         "createdAt"
       ]
+    },
+    "LabComment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LabComment",
+      "type": "object",
+      "description": "Represents a comment on a lab.",
+      "properties": {
+        "labId": {
+          "type": "string",
+          "description": "Reference to the lab being commented on."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who wrote the comment."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "The display name of the user who wrote the comment."
+        },
+        "authorPhotoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to the commenter's profile picture."
+        },
+        "text": {
+          "type": "string",
+          "description": "The content of the comment."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date and time when the comment was posted, as a server timestamp.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "labId",
+        "userId",
+        "authorName",
+        "text",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -160,6 +251,18 @@
         "$ref": "#/backend/entities/Comment"
       },
       "description": "Stores comments for a specific game. Anyone can read, signed-in users can create, and owners can delete/update."
+    },
+    "/publishedLabs/{labId}": {
+      "schema": {
+        "$ref": "#/backend/entities/UploadedLab"
+      },
+      "description": "Stores published lab simulations for public access. Anyone can read, while creation, updates, and deletion are restricted to the content owner."
+    },
+    "/publishedLabs/{labId}/comments/{commentId}": {
+      "schema": {
+        "$ref": "#/backend/entities/LabComment"
+      },
+      "description": "Stores comments for a specific lab. Anyone can read, signed-in users can create, and owners can delete/update."
     },
     "/users/{userId}": {
       "schema": {
