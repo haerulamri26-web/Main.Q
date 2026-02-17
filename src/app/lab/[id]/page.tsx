@@ -190,7 +190,6 @@ export default function LabPage() {
               </Link>
             </span>
           </div>
-          <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{lab.description}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 self-start pt-2">
@@ -250,10 +249,25 @@ export default function LabPage() {
         </Button>
       </div>
 
+      <div className="mt-12 space-y-8 max-w-3xl mx-auto">
+        <div>
+            <h2 className="text-2xl font-bold font-headline mb-3">Tentang Simulasi Ini</h2>
+            <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {lab.description || `Jelajahi simulasi interaktif "${lab.title}" yang dibuat oleh ${lab.authorName}. Simulasi ini dirancang untuk mata pelajaran ${lab.subject}. Buka dalam mode layar penuh untuk pengalaman terbaik!`}
+            </p>
+        </div>
+        <div>
+            <h2 className="text-2xl font-bold font-headline mb-3">Tujuan Pembelajaran</h2>
+            <p className="text-foreground/80 leading-relaxed">
+                Simulasi lab virtual ini bertujuan untuk memberikan cara yang aman dan interaktif bagi para siswa untuk memahami konsep-konsep dalam <strong>{lab.subject}</strong>. Dengan melakukan eksperimen virtual, siswa dapat menjelajahi sebab-akibat, memvisualisasikan proses yang kompleks, dan belajar melalui penemuan tanpa memerlukan peralatan fisik.
+            </p>
+        </div>
+      </div>
+
       <div className="mt-12 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
             <MessageCircle className="h-7 w-7 text-primary" />
-            Komentar ({comments?.length || 0})
+            Diskusi & Komentar ({comments?.length || 0})
         </h2>
         
         {user ? (
