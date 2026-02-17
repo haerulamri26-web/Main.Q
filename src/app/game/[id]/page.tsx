@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -76,9 +74,7 @@ export default function GamePage() {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
-
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
@@ -101,16 +97,20 @@ export default function GamePage() {
   }, [game, gameId]);
 
   const handleFullscreen = () => {
-    if (isFullscreen) {
+    if (!document.fullscreenElement) {
+        if (iframeContainerRef.current) {
+            iframeContainerRef.current.requestFullscreen().catch(err => {
+                toast({
+                    variant: "destructive",
+                    title: "Gagal Masuk Mode Layar Penuh",
+                    description: err.message || "Browser Anda mungkin tidak mendukung fitur ini.",
+                });
+            });
+        }
+    } else {
         if (document.exitFullscreen) {
             document.exitFullscreen();
         }
-    } else {
-        const element = iframeContainerRef.current;
-        if (!element) return;
-        if (element.requestFullscreen) element.requestFullscreen();
-        else if ((element as any).webkitRequestFullscreen) (element as any).webkitRequestFullscreen();
-        else if ((element as any).msRequestFullscreen) (element as any).msRequestFullscreen();
     }
   };
 
@@ -191,7 +191,6 @@ export default function GamePage() {
               </Link>
             </span>
           </div>
-          <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{game.description}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0 self-start pt-2">
@@ -230,29 +229,47 @@ export default function GamePage() {
         </div>
       </div>
       
-      <div ref={iframeContainerRef} className="relative w-full aspect-video bg-gray-800 rounded-lg overflow-hidden shadow-lg border">
+      <div 
+        ref={iframeContainerRef}
+        className="relative w-full aspect-video bg-gray-800 rounded-lg overflow-hidden shadow-lg border"
+      >
         <iframe
           title={game.title}
           srcDoc={game.htmlCode}
           className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals"
           allowFullScreen
         />
         <Button 
           variant="outline" 
           size="icon" 
           onClick={handleFullscreen} 
-          title={isFullscreen ? "Keluar dari Layar Penuh" : "Layar Penuh"}
+          title={isFullscreen ? "Keluar dari Mode Penuh" : "Mode Penuh"}
           className="absolute top-3 right-3 z-10 bg-black/30 text-white hover:bg-black/50 border-white/50"
         >
           {isFullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
         </Button>
       </div>
 
+      <div className="mt-12 space-y-8 max-w-3xl mx-auto">
+        <div>
+            <h2 className="text-2xl font-bold font-headline mb-3">Tentang Game Ini</h2>
+            <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                {game.description || `Jelajahi game interaktif "${game.title}" yang dibuat oleh ${game.authorName}. Game ini dirancang untuk mata pelajaran ${game.subject} dan cocok untuk level ${game.class}. Buka dalam mode layar penuh untuk pengalaman terbaik!`}
+            </p>
+        </div>
+        <div>
+            <h2 className="text-2xl font-bold font-headline mb-3">Tujuan Pembelajaran</h2>
+            <p className="text-foreground/80 leading-relaxed">
+                Game edukasi ini bertujuan untuk memberikan cara yang menyenangkan bagi para siswa untuk terlibat dengan materi pelajaran <strong>{game.subject}</strong>. Dengan mengubah pembelajaran menjadi sebuah permainan, diharapkan dapat meningkatkan retensi pengetahuan, keterampilan pemecahan masalah, dan motivasi belajar. Ini adalah alat yang hebat bagi siswa untuk berlatih secara mandiri dan bagi guru untuk memperkaya materi ajar di kelas.
+            </p>
+        </div>
+      </div>
+
       <div className="mt-12 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
             <MessageCircle className="h-7 w-7 text-primary" />
-            Komentar ({comments?.length || 0})
+            Diskusi & Komentar ({comments?.length || 0})
         </h2>
         
         {user ? (
