@@ -2,8 +2,8 @@
 
 import { useParams } from 'next/navigation';
 import { useUser, useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle, Shrink } from 'lucide-react';
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
+import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle, Shrink, Gamepad2, Flame, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useRef, useEffect, useState, type FormEvent } from 'react';
@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 interface Game {
   id: string;
@@ -69,6 +69,30 @@ export default function GamePage() {
   }, [firestore, gameId]);
 
   const { data: comments, isLoading: isLoadingComments } = useCollection<Comment>(commentsQuery);
+
+  // Recommendations: Similar games based on subject
+  const recommendedQuery = useMemoFirebase(() => {
+    if (!firestore || !game) return null;
+    return query(
+      collection(firestore, 'publishedGames'),
+      where('subject', '==', game.subject),
+      limit(6)
+    );
+  }, [firestore, game]);
+
+  const { data: recommendedGames } = useCollection<Game>(recommendedQuery);
+
+  // Popular games for the bottom section
+  const popularQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(
+      collection(firestore, 'publishedGames'),
+      orderBy('views', 'desc'),
+      limit(4)
+    );
+  }, [firestore]);
+
+  const { data: popularGames } = useCollection<Game>(popularQuery);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -177,6 +201,8 @@ export default function GamePage() {
     );
   }
 
+  const filteredRecommended = recommendedGames?.filter(g => g.id !== gameId).slice(0, 5) || [];
+
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in-0 slide-in-from-top-4 duration-500">
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -264,6 +290,27 @@ export default function GamePage() {
                 Game edukasi ini bertujuan untuk memberikan cara yang menyenangkan bagi para siswa untuk terlibat dengan materi pelajaran <strong>{game.subject}</strong>. Dengan mengubah pembelajaran menjadi sebuah permainan, diharapkan dapat meningkatkan retensi pengetahuan, keterampilan pemecahan masalah, dan motivasi belajar. Ini adalah alat yang hebat bagi siswa untuk berlatih secara mandiri dan bagi guru untuk memperkaya materi ajar di kelas.
             </p>
         </div>
+
+        {filteredRecommended.length > 0 && (
+          <div className="pt-6">
+            <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
+              <Gamepad2 className="h-6 w-6 text-primary" />
+              Rekomendasi Serupa
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredRecommended.map((rec) => (
+                <Link 
+                  key={rec.id} 
+                  href={`/game/${rec.id}`} 
+                  className="group flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary transition-colors"
+                >
+                  <span className="font-medium group-hover:text-primary truncate mr-2">{rec.title}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-12 max-w-3xl mx-auto">
@@ -337,7 +384,47 @@ export default function GamePage() {
             )}
         </div>
       </div>
+
+      {/* Popular Games Section at the very bottom */}
+      {popularGames && popularGames.length > 0 && (
+        <div className="mt-20 pt-10 border-t">
+          <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
+            <Flame className="h-6 w-6 text-orange-500" />
+            Game Populer Lainnya
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {popularGames.map((pop) => (
+              <Card key={pop.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
+                  <iframe
+                    srcDoc={pop.htmlCode}
+                    title={pop.title}
+                    className="w-full h-full pointer-events-none"
+                    sandbox="allow-scripts allow-same-origin"
+                    scrolling="no"
+                  />
+                  <Link href={`/game/${pop.id}`} className="absolute inset-0" />
+                </div>
+                <div className="p-4 flex flex-col flex-grow">
+                  <h3 className="font-semibold text-sm leading-snug truncate mb-1">{pop.title}</h3>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
+                    <Badge variant="secondary" className="px-1 py-0 h-4">{pop.class}</Badge>
+                    <div className="flex items-center gap-1">
+                      <Eye className="h-3 w-3" />
+                      <span>{pop.views}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <Button asChild variant="outline">
+              <Link href="/popular">Lihat Semua Game Populer</Link>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-    
