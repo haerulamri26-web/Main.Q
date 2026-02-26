@@ -1,17 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Loader2, Search, Eye, User, ChevronLeft, ChevronRight, GraduationCap, School, Globe, UploadCloud } from 'lucide-react';
+import { Play, Loader2, Eye, User, GraduationCap, UploadCloud, Gamepad2, School, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, orderBy } from 'firebase/firestore';
-
 
 // Define the type for a game document
 interface Game {
@@ -31,11 +30,10 @@ const GAMES_PER_PAGE = 12;
 
 export default function Home() {
   const firestore = useFirestore();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('all');
+  const [selectedLevel, setSelectedLevel] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-
+  
   const gamesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'publishedGames'), orderBy('uploadDate', 'desc'));
@@ -43,137 +41,111 @@ export default function Home() {
 
   const { data: games, isLoading, error } = useCollection<Game>(gamesQuery);
 
-  const uniqueClasses = useMemo(() => {
-    if (!games) return [];
-    return [...new Set(games.map(game => game.class).filter(Boolean))].sort();
-  }, [games]);
-
   const uniqueSubjects = useMemo(() => {
     if (!games) return [];
-    return [...new Set(games.map(game => game.subject).filter(Boolean))].sort();
+    return [...new Set(games.map(game => game.subject).filter(sub => sub && sub.trim() !== ''))].sort();
   }, [games]);
 
   const filteredGames = useMemo(() => {
     if (!games) return [];
     return games.filter(game => {
-      const searchMatch = game.title.toLowerCase().includes(searchTerm.toLowerCase());
-      const classMatch = selectedClass === 'all' || game.class === selectedClass;
+      const levelMatch = selectedLevel === 'all' || game.class.includes(selectedLevel);
       const subjectMatch = selectedSubject === 'all' || game.subject === selectedSubject;
-      return searchMatch && classMatch && subjectMatch;
+      return levelMatch && subjectMatch;
     });
-  }, [games, searchTerm, selectedClass, selectedSubject]);
+  }, [games, selectedLevel, selectedSubject]);
 
-  const totalPages = useMemo(() => {
-    if (!filteredGames) return 0;
-    return Math.ceil(filteredGames.length / GAMES_PER_PAGE);
-  }, [filteredGames]);
-
+  // Pagination logic
+  const totalPages = Math.ceil(filteredGames.length / GAMES_PER_PAGE);
   const paginatedGames = useMemo(() => {
-    if (!filteredGames) return [];
     const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
     return filteredGames.slice(startIndex, startIndex + GAMES_PER_PAGE);
   }, [filteredGames, currentPage]);
 
-  // Reset to page 1 when filters change
+  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedClass, selectedSubject]);
+  }, [selectedLevel, selectedSubject]);
 
+  const handleLevelChange = (level: string) => {
+    setSelectedLevel(level);
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Hero Section */}
-      <section className="text-center mb-16 md:mb-24 animate-in fade-in-0 slide-in-from-top-4 duration-500">
-        <Badge variant="outline" className="mb-4">Platform Game Edukasi HTML5</Badge>
-        <h1 className="text-4xl md:text-5xl font-bold font-headline mb-4 text-primary">Belajar Jadi Menyenangkan dengan MAIN Q</h1>
-        <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-          Selamat datang di MAIN Q, platform #1 di Indonesia untuk menemukan dan berbagi game edukasi interaktif berbasis HTML. Kami memberdayakan guru untuk berkreasi dan membantu siswa belajar dengan cara yang lebih seru dan efektif.
-        </p>
-        <div className="mt-8 flex gap-4 justify-center">
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-8 md:py-12 animate-in fade-in-0 slide-in-from-top-4 duration-500">
+        <div className="space-y-6 text-center md:text-left">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-headline leading-tight">
+            Belajar Lebih Seru
+            <br />
+            dengan <span className="text-primary">Game Edukasi Interaktif</span>
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-lg mx-auto md:mx-0">
+            Mainkan simulasi TKA, kuis, dan game pembelajaran untuk SD, SMP, dan SMA. Cocok untuk latihan siswa dan media ajar guru.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             <Button asChild size="lg">
-                <Link href="#semua-game">
-                    <Play className="mr-2 h-5 w-5" />
-                    Jelajahi Game
-                </Link>
+              <Link href="#semua-game">
+                <Gamepad2 className="mr-2 h-5 w-5" />
+                Mulai Main Sekarang
+              </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-                <Link href="/upload">
-                    <UploadCloud className="mr-2 h-5 w-5" />
-                    Unggah Karyamu
-                </Link>
+              <Link href="/upload">
+                <UploadCloud className="mr-2 h-5 w-5" />
+                Unggah Game
+              </Link>
             </Button>
+          </div>
+          <p className="text-sm text-muted-foreground pt-2">
+            500+ game edukasi · Gratis · Tanpa install
+          </p>
         </div>
-      </section>
-
-      {/* Why MAIN Q Section */}
-      <section className="mb-16 md:mb-24">
-        <h2 className="text-3xl font-bold font-headline text-center mb-12">Kenapa Memilih MAIN Q?</h2>
-        <div className="grid md:grid-cols-3 gap-8 text-center">
-          <div className="flex flex-col items-center">
-            <div className="bg-primary/10 p-4 rounded-full mb-4">
-              <School className="h-10 w-10 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Guru</h3>
-            <p className="text-muted-foreground">Bagikan materi ajar dalam format game interaktif dengan mudah. Ciptakan pengalaman belajar yang tak terlupakan bagi siswa Anda tanpa perlu keahlian coding yang rumit.</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="bg-accent/20 p-4 rounded-full mb-4">
-              <GraduationCap className="h-10 w-10 text-accent-foreground" />
-            </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Siswa</h3>
-            <p className="text-muted-foreground">Ubah cara belajarmu! Jelajahi ribuan game dari berbagai mata pelajaran, mulai dari Matematika hingga Sejarah, yang dibuat langsung oleh para guru hebat di seluruh Indonesia.</p>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="bg-green-500/10 p-4 rounded-full mb-4">
-              <Globe className="h-10 w-10 text-green-600" />
-            </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Gratis dan Terbuka</h3>
-            <p className="text-muted-foreground">MAIN Q adalah platform terbuka dan gratis untuk semua. Misi kami adalah mendemokratisasi pendidikan yang berkualitas dan menyenangkan bagi setiap guru dan siswa.</p>
-          </div>
+        <div className="flex justify-center items-center">
+          <Image
+            src="https://picsum.photos/seed/classroom-illustration/600/500"
+            width={600}
+            height={500}
+            alt="Guru mengajar murid menggunakan tablet"
+            className="rounded-lg shadow-xl"
+            data-ai-hint="teacher students"
+            priority
+          />
         </div>
       </section>
 
       {/* Game Gallery Section */}
-      <section id="semua-game" className="scroll-mt-20">
-        <div className="text-center mb-12">
+      <section id="semua-game" className="scroll-mt-20 mt-8 md:mt-16">
+        <div className="text-center mb-8">
             <h2 className="text-3xl font-bold font-headline">Jelajahi Game Edukasi</h2>
-            <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">Gunakan filter di bawah untuk menemukan game yang paling sesuai dengan kelas dan mata pelajaran yang Anda cari.</p>
         </div>
 
-        <div className="mb-8 p-4 bg-card rounded-lg shadow-sm border sticky top-[77px] z-40 animate-in fade-in-0 slide-in-from-top-8 duration-500 delay-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-            <div className="relative md:col-span-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Cari judul game..."
-                className="pl-10 w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Select value={selectedClass} onValueChange={setSelectedClass}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter berdasarkan kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kelas</SelectItem>
-                {uniqueClasses.map((cls, index) => (
-                  <SelectItem key={`${cls}-${index}`} value={cls}>{cls}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Filter berdasarkan mata pelajaran" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Mata Pelajaran</SelectItem>
-                {uniqueSubjects.map((sub, index) => (
-                  <SelectItem key={`${sub}-${index}`} value={sub}>{sub}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="flex flex-wrap items-center gap-2 mb-8 animate-in fade-in-0 slide-in-from-top-8 duration-500 delay-100">
+          <Button onClick={() => handleLevelChange('all')} variant={selectedLevel === 'all' ? 'default' : 'outline'} size="lg">
+              Semua
+          </Button>
+          <Button onClick={() => handleLevelChange('SD')} variant={selectedLevel === 'SD' ? 'default' : 'outline'} size="lg">
+              Kelas SD
+          </Button>
+          <Button onClick={() => handleLevelChange('SMP')} variant={selectedLevel === 'SMP' ? 'default' : 'outline'} size="lg">
+              <GraduationCap className="mr-2 h-4 w-4" /> Kelas SMP
+          </Button>
+          <Button onClick={() => handleLevelChange('SMA')} variant={selectedLevel === 'SMA' ? 'default' : 'outline'} size="lg">
+              <GraduationCap className="mr-2 h-4 w-4" /> Kelas SMA
+          </Button>
+          <div className="ml-auto w-full sm:w-auto">
+              <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger className="w-full sm:w-[240px]" size="lg">
+                      <SelectValue placeholder="Semua Mata Pelajaran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">Semua Mata Pelajaran</SelectItem>
+                      {uniqueSubjects.map((sub, index) => (
+                      <SelectItem key={`${sub}-${index}`} value={sub}>{sub}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
           </div>
         </div>
 
@@ -185,18 +157,18 @@ export default function Home() {
           )}
           {error && <p className="text-destructive text-center">Gagal memuat game: {error.message}</p>}
           
-          {!isLoading && paginatedGames.length === 0 && (
+          {!isLoading && filteredGames.length === 0 && (
             <div className="text-center text-muted-foreground py-16 bg-card border rounded-lg">
               <h3 className="text-xl font-semibold">Tidak ada game yang cocok!</h3>
-              <p>Coba kata kunci atau filter yang berbeda, atau jelajahi semua game yang tersedia.</p>
+              <p>Coba filter yang berbeda.</p>
             </div>
           )}
 
           {paginatedGames && paginatedGames.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {paginatedGames.map((game) => (
-                  <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                  <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group">
                     <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
                       <iframe
                           srcDoc={game.htmlCode}
@@ -210,37 +182,42 @@ export default function Home() {
                             className="absolute inset-0"
                             aria-label={`Mainkan game ${game.title}`}
                         />
+                        <Badge className="absolute top-2 left-2 bg-black/50 text-white backdrop-blur-sm border-transparent">{game.class}</Badge>
                     </div>
-                    <CardHeader>
-                      <div className="flex flex-wrap gap-2 mb-2 items-center">
-                        <Badge variant="secondary">{game.class}</Badge>
-                        <Badge variant="secondary">{game.subject}</Badge>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
-                            <Eye className="h-4 w-4" />
-                            <span>{game.views || 0}</span>
+                    <div className="p-4 flex flex-col flex-grow">
+                      <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
+                        <div className="flex items-center gap-2 truncate">
+                            <span className="font-medium text-foreground">{game.subject}</span>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Eye className="h-4 w-4" />
+                          <span>{game.views || 0}</span>
                         </div>
                       </div>
-                      <CardTitle className="truncate">{game.title}</CardTitle>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <User className="h-4 w-4 flex-shrink-0" />
-                        <Link href={`/user/${game.userId}`} className="truncate hover:underline">
-                          Oleh {game.authorName}
-                        </Link>
+
+                      <h3 className="font-semibold leading-snug truncate mb-1 group-hover:text-primary">{game.title}</h3>
+                      
+                      <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-4">
+                        <User className="h-4 w-4" />
+                        <span className="truncate">Oleh {game.authorName}</span>
                       </div>
-                    </CardHeader>
-                    <CardContent className="flex-grow flex items-end">
-                      <Button asChild className="w-full">
-                        <Link href={`/game/${game.id}`}>
-                            <Play className="mr-2 h-4 w-4" />
-                            Mainkan Sekarang
-                        </Link>
-                      </Button>
-                    </CardContent>
+                      
+                      <div className="mt-auto">
+                        <Button asChild className="w-full">
+                            <Link href={`/game/${game.id}`}>
+                                <Play className="mr-2 h-4 w-4" />
+                                Mainkan Sekarang
+                            </Link>
+                        </Button>
+                      </div>
+                    </div>
                   </Card>
                 ))}
               </div>
+
+              {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="mt-8 flex justify-center items-center gap-4">
+                <div className="mt-12 flex justify-center items-center gap-4">
                   <Button
                     variant="outline"
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -264,6 +241,34 @@ export default function Home() {
               )}
             </>
           )}
+        </div>
+      </section>
+
+      {/* Why MAIN Q Section */}
+      <section className="mt-16 md:mt-24 mb-16">
+        <h2 className="text-3xl font-bold font-headline text-center mb-12">Kenapa Memilih MAIN Q?</h2>
+        <div className="grid md:grid-cols-3 gap-8 text-center">
+          <div className="flex flex-col items-center">
+            <div className="bg-primary/10 p-4 rounded-full mb-4">
+              <School className="h-10 w-10 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Guru</h3>
+            <p className="text-muted-foreground">Bagikan materi ajar dalam format game interaktif dengan mudah. Ciptakan pengalaman belajar yang tak terlupakan bagi siswa Anda tanpa perlu keahlian coding yang rumit.</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="bg-accent/20 p-4 rounded-full mb-4">
+              <GraduationCap className="h-10 w-10 text-accent-foreground" />
+            </div>
+            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Siswa</h3>
+            <p className="text-muted-foreground">Ubah cara belajarmu! Jelajahi ribuan game dari berbagai mata pelajaran, mulai dari Matematika hingga Sejarah, yang dibuat langsung oleh para guru hebat di seluruh Indonesia.</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <div className="bg-green-500/10 p-4 rounded-full mb-4">
+              <Globe className="h-10 w-10 text-green-600" />
+            </div>
+            <h3 className="text-xl font-semibold font-headline mb-2">Gratis dan Terbuka</h3>
+            <p className="text-muted-foreground">MAIN Q adalah platform terbuka dan gratis untuk semua. Misi kami adalah mendemokratisasi pendidikan yang berkualitas dan menyenangkan bagi setiap guru dan siswa.</p>
+          </div>
         </div>
       </section>
     </div>
