@@ -3,16 +3,16 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Loader2, Eye, User, GraduationCap, UploadCloud, Gamepad2, School, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Eye, User, GraduationCap, UploadCloud, Gamepad2, School, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, orderBy } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Define the type for a game document
 interface Game {
   id: string;
   title: string;
@@ -55,25 +55,33 @@ export default function Home() {
     });
   }, [games, selectedLevel, selectedSubject]);
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredGames.length / GAMES_PER_PAGE);
   const paginatedGames = useMemo(() => {
     const startIndex = (currentPage - 1) * GAMES_PER_PAGE;
     return filteredGames.slice(startIndex, startIndex + GAMES_PER_PAGE);
   }, [filteredGames, currentPage]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedLevel, selectedSubject]);
 
-  const handleLevelChange = (level: string) => {
-    setSelectedLevel(level);
-  }
+  const GameCardSkeleton = () => (
+    <Card className="flex flex-col overflow-hidden">
+      <div className="aspect-video bg-muted animate-pulse" />
+      <div className="p-4 space-y-3">
+        <div className="flex justify-between">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-4 w-1/4" />
+        </div>
+        <Skeleton className="h-6 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-10 w-full mt-4" />
+      </div>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Hero Section */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-8 md:py-12 animate-in fade-in-0 slide-in-from-top-4 duration-500">
         <div className="space-y-6 text-center md:text-left">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-headline leading-tight">
@@ -115,23 +123,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Game Gallery Section */}
       <section id="semua-game" className="scroll-mt-20 mt-8 md:mt-16">
         <div className="text-center mb-8">
             <h2 className="text-3xl font-bold font-headline">Jelajahi Game Edukasi</h2>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-8 animate-in fade-in-0 slide-in-from-top-8 duration-500 delay-100">
-          <Button onClick={() => handleLevelChange('all')} variant={selectedLevel === 'all' ? 'default' : 'outline'} size="lg">
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          <Button onClick={() => setSelectedLevel('all')} variant={selectedLevel === 'all' ? 'default' : 'outline'} size="lg">
               Semua
           </Button>
-          <Button onClick={() => handleLevelChange('SD')} variant={selectedLevel === 'SD' ? 'default' : 'outline'} size="lg">
+          <Button onClick={() => setSelectedLevel('SD')} variant={selectedLevel === 'SD' ? 'default' : 'outline'} size="lg">
               Kelas SD
           </Button>
-          <Button onClick={() => handleLevelChange('SMP')} variant={selectedLevel === 'SMP' ? 'default' : 'outline'} size="lg">
+          <Button onClick={() => setSelectedLevel('SMP')} variant={selectedLevel === 'SMP' ? 'default' : 'outline'} size="lg">
               <GraduationCap className="mr-2 h-4 w-4" /> Kelas SMP
           </Button>
-          <Button onClick={() => handleLevelChange('SMA')} variant={selectedLevel === 'SMA' ? 'default' : 'outline'} size="lg">
+          <Button onClick={() => setSelectedLevel('SMA')} variant={selectedLevel === 'SMA' ? 'default' : 'outline'} size="lg">
               <GraduationCap className="mr-2 h-4 w-4" /> Kelas SMA
           </Button>
           <div className="ml-auto w-full sm:w-auto">
@@ -149,24 +156,25 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="animate-in fade-in-0 slide-in-from-top-12 duration-500 delay-200">
+        <div>
+          {error && <p className="text-destructive text-center py-8">Gagal memuat game: {error.message}</p>}
+          
           {isLoading && (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => <GameCardSkeleton key={i} />)}
             </div>
           )}
-          {error && <p className="text-destructive text-center">Gagal memuat game: {error.message}</p>}
-          
-          {!isLoading && filteredGames.length === 0 && (
+
+          {!isLoading && games && filteredGames.length === 0 && (
             <div className="text-center text-muted-foreground py-16 bg-card border rounded-lg">
               <h3 className="text-xl font-semibold">Tidak ada game yang cocok!</h3>
               <p>Coba filter yang berbeda.</p>
             </div>
           )}
 
-          {paginatedGames && paginatedGames.length > 0 && (
+          {!isLoading && paginatedGames.length > 0 && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
                 {paginatedGames.map((game) => (
                   <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group">
                     <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
@@ -215,7 +223,6 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="mt-12 flex justify-center items-center gap-4">
                   <Button
@@ -244,7 +251,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Why MAIN Q Section */}
       <section className="mt-16 md:mt-24 mb-16">
         <h2 className="text-3xl font-bold font-headline text-center mb-12">Kenapa Memilih MAIN Q?</h2>
         <div className="grid md:grid-cols-3 gap-8 text-center">
