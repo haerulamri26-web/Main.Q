@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Game {
   id: string;
@@ -70,7 +71,6 @@ export default function GamePage() {
 
   const { data: comments, isLoading: isLoadingComments } = useCollection<Comment>(commentsQuery);
 
-  // Recommendations: Similar games based on subject
   const recommendedQuery = useMemoFirebase(() => {
     if (!firestore || !game) return null;
     return query(
@@ -82,7 +82,6 @@ export default function GamePage() {
 
   const { data: recommendedGames } = useCollection<Game>(recommendedQuery);
 
-  // Popular games for the bottom section
   const popularQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(
@@ -176,8 +175,16 @@ export default function GamePage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="h-6 w-1/3" />
+        </div>
+        <Skeleton className="w-full aspect-video rounded-lg" />
+        <div className="max-w-3xl mx-auto space-y-6">
+           <Skeleton className="h-32 w-full" />
+           <Skeleton className="h-32 w-full" />
+        </div>
       </div>
     );
   }
@@ -197,6 +204,9 @@ export default function GamePage() {
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold font-headline">Game tidak ditemukan</h1>
         <p>Game ini tidak ada atau telah dihapus.</p>
+        <Button asChild className="mt-4">
+          <Link href="/">Kembali ke Beranda</Link>
+        </Button>
       </div>
     );
   }
@@ -385,7 +395,6 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* Popular Games Section at the very bottom */}
       {popularGames && popularGames.length > 0 && (
         <div className="mt-20 pt-10 border-t">
           <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
