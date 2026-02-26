@@ -10,12 +10,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, FlaskConical } from 'lucide-react';
+import { Loader2, FlaskConical, HelpCircle, AlertCircle } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { setDocumentNonBlocking } from '@/firebase';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Link from 'next/link';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const uploadSchema = z.object({
   title: z.string().min(3, 'Judul minimal harus 3 karakter.'),
@@ -27,6 +29,19 @@ const uploadSchema = z.object({
 });
 
 type UploadFormValues = z.infer<typeof uploadSchema>;
+
+/** Helper to convert title to a URL-friendly slug */
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Replace spaces with -
+    .replace(/[^\w-]+/g, '')  // Remove all non-word chars
+    .replace(/--+/g, '-')     // Replace multiple - with single -
+    .replace(/^-+/, '')       // Trim - from start of text
+    .replace(/-+$/, '');      // Trim - from end of text
+};
 
 export default function UploadLabPage() {
   const { user, isUserLoading } = useUser();
@@ -56,6 +71,10 @@ export default function UploadLabPage() {
     
     setIsUploading(true);
 
+    const slug = slugify(data.title);
+    const shortId = Math.random().toString(36).substring(2, 7);
+    const customId = `${slug}-${shortId}`;
+
     const labData = {
       ...data,
       userId: user.uid,
@@ -64,9 +83,9 @@ export default function UploadLabPage() {
       views: 0,
     };
     
-    const labsCollection = collection(firestore, 'publishedLabs');
+    const labRef = doc(firestore, 'publishedLabs', customId);
 
-    addDocumentNonBlocking(labsCollection, labData)
+    setDocumentNonBlocking(labRef, labData)
       .then(() => {
         toast({
           title: 'Berhasil!',
@@ -104,104 +123,118 @@ export default function UploadLabPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in-0 slide-in-from-top-4 duration-500">
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 font-headline">
-            <FlaskConical className="h-6 w-6" />
-            Unggah Simulasi Lab
-          </CardTitle>
-          <CardDescription>
-            Bagikan simulasi, eksperimen, atau alat bantu visual interaktif Anda ke Lab Virtual.
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Judul Simulasi</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Contoh: Simulasi Reaksi Kimia" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mata Pelajaran</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
+          <HelpCircle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+          <AlertTitle className="font-headline text-amber-800 dark:text-amber-400">Masalah dengan Kode Lab?</AlertTitle>
+          <AlertDescription className="text-sm text-amber-900 dark:text-amber-200">
+            Lihat panduan perbaikan kode di <Link href="/help" className="font-bold underline text-amber-700 dark:text-amber-400">Pusat Bantuan</Link>.
+          </AlertDescription>
+        </Alert>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-headline text-primary">
+              <FlaskConical className="h-6 w-6" />
+              Unggah Simulasi Lab
+            </CardTitle>
+            <CardDescription>
+              Bagikan simulasi interaktif Anda. URL simulasi akan dibuat berdasarkan judul yang Anda berikan.
+            </CardDescription>
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Judul Simulasi</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih mata pelajaran" />
-                        </SelectTrigger>
+                        <Input placeholder="Contoh: Simulasi Reaksi Kimia" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Fisika">Fisika</SelectItem>
-                        <SelectItem value="Kimia">Kimia</SelectItem>
-                        <SelectItem value="Biologi">Biologi</SelectItem>
-                        <SelectItem value="Matematika">Matematika</SelectItem>
-                        <SelectItem value="Lainnya">Lainnya</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Deskripsi</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Jelaskan secara singkat tentang simulasi Anda."
-                        className="min-h-[80px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="htmlCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Kode HTML</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="<!DOCTYPE html>..."
-                        className="font-mono min-h-[250px] text-sm"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" className="w-full" disabled={isUploading}>
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Mengunggah...
-                  </>
-                ) : 'Unggah Simulasi'}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mata Pelajaran</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Pilih mata pelajaran" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Fisika">Fisika</SelectItem>
+                          <SelectItem value="Kimia">Kimia</SelectItem>
+                          <SelectItem value="Biologi">Biologi</SelectItem>
+                          <SelectItem value="Matematika">Matematika</SelectItem>
+                          <SelectItem value="Lainnya">Lainnya</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Deskripsi</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Jelaskan secara singkat tentang simulasi Anda."
+                          className="min-h-[80px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="htmlCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Kode HTML</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="<!DOCTYPE html>..."
+                          className="font-mono min-h-[250px] text-sm"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 bg-secondary/50 rounded-md">
+                   <AlertCircle className="h-4 w-4 text-primary" />
+                   <span>Butuh panduan teknis? Cek <Link href="/help" className="text-primary hover:underline font-medium">Pusat Bantuan</Link></span>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button type="submit" className="w-full" disabled={isUploading}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Mengunggah...
+                    </>
+                  ) : 'Unggah Simulasi'}
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
+      </div>
     </div>
   );
 }
