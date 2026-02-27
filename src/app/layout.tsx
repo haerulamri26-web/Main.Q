@@ -1,4 +1,6 @@
-import type { Metadata } from 'next';
+'use client';
+
+import { Inter, Fredoka } from 'next/font/google';
 import Link from 'next/link';
 import Image from 'next/image';
 import './globals.css';
@@ -10,10 +12,20 @@ import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { Suspense } from 'react';
 import { AdSense } from '@/components/AdSense';
 
-export const metadata: Metadata = {
-  title: 'MAIN Q: Platform Game Edukasi HTML5',
-  description: 'Temukan ribuan game edukasi HTML5 buatan guru di MAIN Q. Platform untuk belajar sambil bermain.',
-};
+// Initialize Inter font for body text
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+// Initialize Fredoka font for headlines
+const fredoka = Fredoka({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-fredoka',
+  display: 'swap',
+});
 
 const MainQLogo = ({ className }: { className?: string }) => (
     <div className={cn("flex items-center", className)}>
@@ -34,14 +46,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
+    <html lang="id" className={`${inter.variable} ${fredoka.variable}`}>
       <head>
         <meta name="google-site-verification" content="hNuCsI-8kIhGijjApCawbZ3MF1_5DN2XxvPL6jZ_rQ8" />
         <meta name="google-adsense-child-directed-treatment" content="true" />
         <meta name="google-adsense-under-age-of-consent" content="true" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Fredoka:wght@700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
@@ -62,7 +71,7 @@ export default function RootLayout({
                 </div>
               </div>
             </header>
-            <main className="flex-1 animate-in fade-in-0 duration-500">
+            <main className="flex-1">
               {children}
             </main>
             <Toaster />

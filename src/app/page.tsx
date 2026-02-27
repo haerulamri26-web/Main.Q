@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Play, Eye, User, GraduationCap, UploadCloud, Gamepad2, School, Globe, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Eye, User, GraduationCap, UploadCloud, Gamepad2, School, Globe, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -66,7 +66,7 @@ export default function Home() {
   }, [selectedLevel, selectedSubject]);
 
   const GameCardSkeleton = () => (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className="flex flex-col overflow-hidden border">
       <div className="aspect-video bg-muted animate-pulse" />
       <div className="p-4 space-y-3">
         <div className="flex justify-between">
@@ -82,7 +82,8 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-8 md:py-12 animate-in fade-in-0 slide-in-from-top-4 duration-500">
+      {/* Hero Section */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-8 md:py-12">
         <div className="space-y-6 text-center md:text-left">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-headline leading-tight">
             Belajar Lebih Seru
@@ -90,7 +91,7 @@ export default function Home() {
             dengan <span className="text-primary">Game Edukasi Interaktif</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-lg mx-auto md:mx-0">
-            Mainkan simulasi TKA, kuis, dan game pembelajaran untuk SD, SMP, dan SMA. Cocok untuk latihan siswa dan media ajar guru.
+            Mainkan simulasi TKA, kuis, dan game pembelajaran untuk SD, SMP, dan SMA. Cocok untuk latihan siswa dan media ajar guru di Indonesia.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
             <Button asChild size="lg">
@@ -107,7 +108,7 @@ export default function Home() {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground pt-2">
-            500+ game edukasi · Gratis · Tanpa install
+            500+ game edukasi · Gratis · Tanpa instalasi tambahan · Aman untuk anak
           </p>
         </div>
         <div className="flex justify-center items-center">
@@ -115,7 +116,7 @@ export default function Home() {
             src="https://picsum.photos/seed/classroom-illustration/600/500"
             width={600}
             height={500}
-            alt="Guru mengajar murid menggunakan tablet"
+            alt="Guru dan siswa belajar menggunakan media interaktif"
             className="rounded-lg shadow-xl"
             data-ai-hint="teacher students"
             priority
@@ -123,14 +124,18 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Main Content Section */}
       <section id="semua-game" className="scroll-mt-20 mt-8 md:mt-16">
         <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold font-headline">Jelajahi Game Edukasi</h2>
+            <h2 className="text-3xl font-bold font-headline">Jelajahi Game Edukasi Berdasarkan Kategori</h2>
+            <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">
+              Temukan berbagai macam permainan interaktif mulai dari kuis Matematika, simulasi IPA, hingga petualangan Sejarah untuk membantu proses belajar mengajar.
+            </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-8">
           <Button onClick={() => setSelectedLevel('all')} variant={selectedLevel === 'all' ? 'default' : 'outline'} size="lg">
-              Semua
+              Semua Level
           </Button>
           <Button onClick={() => setSelectedLevel('SD')} variant={selectedLevel === 'SD' ? 'default' : 'outline'} size="lg">
               Kelas SD
@@ -157,26 +162,17 @@ export default function Home() {
         </div>
 
         <div>
-          {error && <p className="text-destructive text-center py-8">Gagal memuat game: {error.message}</p>}
+          {error && <p className="text-destructive text-center py-8 font-semibold">Gagal memuat daftar game: {error.message}</p>}
           
-          {isLoading && (
+          {isLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => <GameCardSkeleton key={i} />)}
+              {[...Array(12)].map((_, i) => <GameCardSkeleton key={i} />)}
             </div>
-          )}
-
-          {!isLoading && games && filteredGames.length === 0 && (
-            <div className="text-center text-muted-foreground py-16 bg-card border rounded-lg">
-              <h3 className="text-xl font-semibold">Tidak ada game yang cocok!</h3>
-              <p>Coba filter yang berbeda.</p>
-            </div>
-          )}
-
-          {!isLoading && paginatedGames.length > 0 && (
+          ) : paginatedGames.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {paginatedGames.map((game) => (
-                  <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group">
+                  <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border">
                     <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
                       <iframe
                           srcDoc={game.htmlCode}
@@ -184,6 +180,7 @@ export default function Home() {
                           className="w-full h-full"
                           sandbox="allow-scripts allow-same-origin"
                           scrolling="no"
+                          loading="lazy"
                         />
                         <Link
                             href={`/game/${game.id}`}
@@ -247,34 +244,56 @@ export default function Home() {
                 </div>
               )}
             </>
+          ) : (
+            <div className="text-center text-muted-foreground py-16 bg-card border rounded-lg shadow-sm">
+              <h3 className="text-xl font-semibold">Tidak ada game yang cocok dengan kriteria Anda.</h3>
+              <p>Coba gunakan filter kelas atau mata pelajaran yang berbeda.</p>
+            </div>
           )}
         </div>
       </section>
 
-      <section className="mt-16 md:mt-24 mb-16">
-        <h2 className="text-3xl font-bold font-headline text-center mb-12">Kenapa Memilih MAIN Q?</h2>
+      {/* Feature Section */}
+      <section className="mt-16 md:mt-24 mb-16 space-y-12">
+        <h2 className="text-3xl font-bold font-headline text-center">Kenapa Memilih MAIN Q?</h2>
         <div className="grid md:grid-cols-3 gap-8 text-center">
           <div className="flex flex-col items-center">
             <div className="bg-primary/10 p-4 rounded-full mb-4">
               <School className="h-10 w-10 text-primary" />
             </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Guru</h3>
-            <p className="text-muted-foreground">Bagikan materi ajar dalam format game interaktif dengan mudah. Ciptakan pengalaman belajar yang tak terlupakan bagi siswa Anda tanpa perlu keahlian coding yang rumit.</p>
+            <h3 className="text-xl font-semibold font-headline mb-2 text-foreground">Bagi Guru Kreatif</h3>
+            <p className="text-muted-foreground">Bagikan materi ajar dalam format game interaktif dengan mudah. Ciptakan pengalaman belajar yang tak terlupakan bagi siswa tanpa perlu keahlian coding yang rumit.</p>
           </div>
           <div className="flex flex-col items-center">
             <div className="bg-accent/20 p-4 rounded-full mb-4">
               <GraduationCap className="h-10 w-10 text-accent-foreground" />
             </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Untuk Para Siswa</h3>
-            <p className="text-muted-foreground">Ubah cara belajarmu! Jelajahi ribuan game dari berbagai mata pelajaran, mulai dari Matematika hingga Sejarah, yang dibuat langsung oleh para guru hebat di seluruh Indonesia.</p>
+            <h3 className="text-xl font-semibold font-headline mb-2 text-foreground">Bagi Siswa Aktif</h3>
+            <p className="text-muted-foreground">Ubah cara belajarmu! Jelajahi ribuan game dari berbagai mata pelajaran, mulai dari Matematika hingga Sejarah, yang dibuat langsung oleh guru di Indonesia.</p>
           </div>
           <div className="flex flex-col items-center">
             <div className="bg-green-500/10 p-4 rounded-full mb-4">
               <Globe className="h-10 w-10 text-green-600" />
             </div>
-            <h3 className="text-xl font-semibold font-headline mb-2">Gratis dan Terbuka</h3>
-            <p className="text-muted-foreground">MAIN Q adalah platform terbuka dan gratis untuk semua. Misi kami adalah mendemokratisasi pendidikan yang berkualitas dan menyenangkan bagi setiap guru dan siswa.</p>
+            <h3 className="text-xl font-semibold font-headline mb-2 text-foreground">Akses Gratis & Terbuka</h3>
+            <p className="text-muted-foreground">MAIN Q adalah platform terbuka dan gratis untuk semua. Misi kami adalah mendemokratisasi pendidikan yang berkualitas dan menyenangkan bagi setiap anak bangsa.</p>
           </div>
+        </div>
+      </section>
+
+      {/* SEO Text Block */}
+      <section className="bg-card border p-8 rounded-lg mt-16">
+        <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
+            <BookOpen className="text-primary" />
+            Platform Media Pembelajaran Interaktif Nomor 1
+        </h2>
+        <div className="grid md:grid-cols-2 gap-8 text-sm text-muted-foreground leading-relaxed">
+            <p>
+                MAIN Q hadir sebagai solusi inovatif bagi dunia pendidikan di Indonesia. Kami menyediakan ribuan permainan edukasi yang dirancang khusus untuk memenuhi kebutuhan kurikulum sekolah dasar hingga menengah atas. Dengan integrasi teknologi web modern, setiap konten di MAIN Q dapat diakses tanpa perlu melakukan instalasi aplikasi tambahan, cukup melalui browser di smartphone atau laptop.
+            </p>
+            <p>
+                Kami mendukung penuh para guru untuk mentransformasikan materi ajar statis menjadi simulasi interaktif yang menarik. Mulai dari praktikum lab virtual fisika, kuis sejarah yang menegangkan, hingga latihan logika matematika, semuanya tersedia di sini untuk meningkatkan motivasi dan daya serap belajar siswa.
+            </p>
         </div>
       </section>
     </div>
