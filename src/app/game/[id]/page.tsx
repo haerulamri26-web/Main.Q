@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useUser, useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
-import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle, Shrink, Gamepad2, Flame, ChevronRight } from 'lucide-react';
+import { Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, MessageCircle, Shrink, Gamepad2, Flame, ChevronRight, Home, BookOpen, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useRef, useEffect, useState, type FormEvent } from 'react';
@@ -214,6 +214,10 @@ export default function GamePage() {
 
   const filteredRecommended = recommendedGames?.filter(g => g.id !== gameId).slice(0, 5) || [];
 
+  // Important for SEO: Stay in "loading" state if the main game data is still missing
+  const isActuallyLoadingRecommended = isLoading || isLoadingRecommended;
+  const isActuallyLoadingPopular = isLoading || isLoadingPopular;
+
   return (
     <div className="container mx-auto px-4 py-8">
       {jsonLd && (
@@ -223,6 +227,20 @@ export default function GamePage() {
         />
       )}
       
+      {/* Breadcrumbs for SEO */}
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 overflow-hidden">
+        <Link href="/" className="flex items-center gap-1 hover:text-primary transition-colors shrink-0">
+            <Home className="h-3.5 w-3.5" />
+            Beranda
+        </Link>
+        <ChevronRight className="h-3 w-3 shrink-0" />
+        <Link href={`/?level=${game?.class.split(' ')[0]}`} className="hover:text-primary transition-colors shrink-0">
+            {game?.class || 'Level'}
+        </Link>
+        <ChevronRight className="h-3 w-3 shrink-0" />
+        <span className="text-foreground font-medium truncate">{game?.title || 'Loading...'}</span>
+      </nav>
+
       {/* Game Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
         {isLoading ? (
@@ -313,178 +331,228 @@ export default function GamePage() {
         )}
       </div>
 
-      <div className="mt-12 space-y-8 max-w-3xl mx-auto">
+      <div className="mt-12 space-y-12 max-w-4xl mx-auto">
         {/* Description Section */}
-        <div>
-            <h2 className="text-2xl font-bold font-headline mb-3">Tentang Game Ini</h2>
-            {isLoading ? (
-              <Skeleton className="h-24 w-full" />
-            ) : game && (
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                  {game.description || `Jelajahi game interaktif "${game.title}" yang dibuat oleh ${game.authorName}. Game ini dirancang untuk mata pelajaran ${game.subject} dan cocok untuk level ${game.class}. Buka dalam mode layar penuh untuk pengalaman terbaik!`}
-              </p>
-            )}
-        </div>
-
-        {/* Learning Goal Section */}
-        <div>
-            <h2 className="text-2xl font-bold font-headline mb-3">Tujuan Pembelajaran</h2>
-            {isLoading ? (
-              <Skeleton className="h-24 w-full" />
-            ) : game && (
-              <p className="text-foreground/80 leading-relaxed">
-                  Game edukasi ini bertujuan untuk memberikan cara yang menyenangkan bagi para siswa untuk terlibat dengan materi pelajaran <strong>{game.subject}</strong>. Dengan mengubah pembelajaran menjadi sebuah permainan, diharapkan dapat meningkatkan retensi pengetahuan, keterampilan pemecahan masalah, dan motivasi belajar.
-              </p>
-            )}
-        </div>
-
-        {/* Recommended Games Section */}
-        <div className="pt-6">
-          <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
-            <Gamepad2 className="h-6 w-6 text-primary" />
-            Rekomendasi Serupa
-          </h2>
-          {isLoadingRecommended ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
-            </div>
-          ) : filteredRecommended.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredRecommended.map((rec) => (
-                <Link 
-                  key={rec.id} 
-                  href={`/game/${rec.id}`} 
-                  className="group flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary transition-colors"
-                >
-                  <span className="font-medium group-hover:text-primary truncate mr-2">{rec.title}</span>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0" />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground italic text-sm">Belum ada rekomendasi untuk mata pelajaran ini.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Discussion Section */}
-      <div className="mt-12 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
-            <MessageCircle className="h-7 w-7 text-primary" />
-            Diskusi & Komentar ({comments?.length || 0})
-        </h2>
-        
-        {user ? (
-            <form onSubmit={handleCommentSubmit} className="mb-8">
-            <div className="flex items-start gap-4">
-                <Avatar className="h-10 w-10 border">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
-                    <AvatarFallback>{(user.displayName?.charAt(0) || 'U').toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                <Textarea 
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Tulis komentar Anda di sini..."
-                    className="mb-2"
-                    disabled={isSubmitting}
-                    rows={3}
-                />
-                <div className="flex justify-end">
-                    <Button type="submit" disabled={!comment.trim() || isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Kirim
-                    </Button>
-                </div>
-                </div>
-            </div>
-            </form>
-        ) : (
-            <div className="mb-8 text-center text-muted-foreground p-4 border-2 border-dashed rounded-lg">
-            <Link href="/login" className="font-semibold text-primary hover:underline">Masuk</Link> untuk meninggalkan komentar.
-            </div>
-        )}
-
-        <div className="space-y-6">
-            {isLoadingComments ? (
-                <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
-                </div>
-            ) : comments && comments.length > 0 ? (
-            comments.map(c => (
-                <div key={c.id} className="flex items-start gap-4">
-                <Avatar className="border">
-                    <AvatarImage src={c.authorPhotoURL || ''} alt={c.authorName} />
-                    <AvatarFallback>{(c.authorName.charAt(0) || 'U').toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 bg-secondary/50 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                        <p className="font-semibold text-sm">{c.authorName}</p>
-                        <p className="text-xs text-muted-foreground">
-                            &bull; {c.createdAt?.toDate ? formatDistanceToNow(c.createdAt.toDate(), { addSuffix: true, locale: idLocale }) : ''}
+        <div className="grid md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-6">
+                <div>
+                    <h2 className="text-2xl font-bold font-headline mb-3 flex items-center gap-2">
+                        <BookOpen className="h-6 w-6 text-primary" />
+                        Deskripsi Media Pembelajaran
+                    </h2>
+                    {isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                    ) : game && (
+                    <div className="space-y-4">
+                        <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                            {game.description || `Halaman ini menyajikan game edukasi interaktif "${game.title}" untuk mendukung proses belajar mengajar mata pelajaran ${game.subject}. Dibuat oleh ${game.authorName}, media ini dirancang untuk memudahkan siswa memahami konsep-konsep kunci melalui pendekatan yang menyenangkan.`}
                         </p>
                     </div>
-                    <p className="text-sm text-foreground/90 whitespace-pre-wrap">{c.text}</p>
+                    )}
                 </div>
+
+                <div>
+                    <h2 className="text-2xl font-bold font-headline mb-3 flex items-center gap-2">
+                        <Layers className="h-6 w-6 text-primary" />
+                        Tujuan & Manfaat Pembelajaran
+                    </h2>
+                    {isLoading ? (
+                    <Skeleton className="h-24 w-full" />
+                    ) : game && (
+                    <div className="space-y-4 text-foreground/80 leading-relaxed">
+                        <p>
+                            Game ini selaras dengan semangat <strong>Kurikulum Merdeka</strong> yang mengedepankan pembelajaran berpusat pada siswa (<em>student-centered learning</em>). Beberapa manfaat utama meliputi:
+                        </p>
+                        <ul className="list-disc list-inside space-y-2 ml-4">
+                            <li><strong>Pemahaman Konsep:</strong> Membantu visualisasi materi {game.subject} yang abstrak bagi level {game.class}.</li>
+                            <li><strong>Interaktivitas Tinggi:</strong> Siswa tidak hanya membaca, tapi terlibat langsung dalam tantangan di dalam game.</li>
+                            <li><strong>Evaluasi Mandiri:</strong> Memberikan umpan balik instan sehingga siswa tahu bagian mana yang perlu dipelajari kembali.</li>
+                            <li><strong>Aksesibilitas:</strong> Dapat digunakan sebagai alat peraga di kelas oleh guru atau dipelajari mandiri oleh siswa di rumah.</li>
+                        </ul>
+                    </div>
+                    )}
                 </div>
-            ))
+            </div>
+
+            <aside className="space-y-6">
+                <Card className="bg-muted/30">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-headline">Detail Informasi</CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm space-y-3">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Level:</span>
+                            <span className="font-medium">{game?.class || <Skeleton className="h-4 w-12" />}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Mapel:</span>
+                            <span className="font-medium">{game?.subject || <Skeleton className="h-4 w-12" />}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Format:</span>
+                            <span className="font-medium">HTML5 / Web</span>
+                        </div>
+                        <Separator />
+                        <div className="pt-2">
+                            <p className="text-xs text-muted-foreground italic leading-relaxed">
+                                Media ini di-host secara gratis di MAIN Q untuk mendukung kemajuan pendidikan di Indonesia.
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Recommended Games Section */}
+                <div className="space-y-4">
+                    <h3 className="text-xl font-bold font-headline flex items-center gap-2">
+                        <Gamepad2 className="h-5 w-5 text-primary" />
+                        Rekomendasi
+                    </h3>
+                    {isActuallyLoadingRecommended ? (
+                        <div className="space-y-2">
+                        {[...Array(4)].map((_, i) => <Skeleton key={`rec-skel-${i}`} className="h-10 w-full" />)}
+                        </div>
+                    ) : filteredRecommended.length > 0 ? (
+                        <div className="space-y-2">
+                        {filteredRecommended.map((rec) => (
+                            <Link 
+                            key={rec.id} 
+                            href={`/game/${rec.id}`} 
+                            className="group flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary transition-colors text-sm"
+                            >
+                            <span className="font-medium group-hover:text-primary truncate mr-2">{rec.title}</span>
+                            <ChevronRight className="h-3 w-3 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                            </Link>
+                        ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground italic text-xs">Belum ada rekomendasi lainnya.</p>
+                    )}
+                </div>
+            </aside>
+        </div>
+
+        {/* Discussion Section */}
+        <div className="pt-6 border-t">
+            <h2 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
+                <MessageCircle className="h-7 w-7 text-primary" />
+                Diskusi & Komentar ({comments?.length || 0})
+            </h2>
+            
+            {user ? (
+                <form onSubmit={handleCommentSubmit} className="mb-8">
+                <div className="flex items-start gap-4">
+                    <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={user.photoURL || ''} alt={user.displayName || ''} />
+                        <AvatarFallback>{(user.displayName?.charAt(0) || 'U').toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                    <Textarea 
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        placeholder="Tulis komentar atau pertanyaan Anda..."
+                        className="mb-2"
+                        disabled={isSubmitting}
+                        rows={3}
+                    />
+                    <div className="flex justify-end">
+                        <Button type="submit" disabled={!comment.trim() || isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Kirim
+                        </Button>
+                    </div>
+                    </div>
+                </div>
+                </form>
             ) : (
-                <div className="text-center text-muted-foreground py-12">
-                    <h3 className="font-semibold">Belum ada komentar</h3>
-                    <p>Jadilah yang pertama berkomentar di game ini.</p>
+                <div className="mb-8 text-center text-muted-foreground p-6 border-2 border-dashed rounded-lg bg-muted/20">
+                    <p className="mb-2">Ingin berdiskusi tentang game ini?</p>
+                    <Button asChild variant="outline" size="sm">
+                        <Link href="/login">Masuk Sekarang</Link>
+                    </Button>
                 </div>
             )}
-        </div>
-      </div>
 
-      {/* Popular Games Section */}
-      <div className="mt-20 pt-10 border-t">
-        <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
-          <Flame className="h-6 w-6 text-orange-500" />
-          Game Populer Lainnya
-        </h2>
-        {isLoadingPopular ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="aspect-[4/5] w-full" />)}
-          </div>
-        ) : popularGames && popularGames.length > 0 ? (
-          <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {popularGames.map((pop) => (
-                <Card key={pop.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                  <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
-                    <iframe
-                      srcDoc={pop.htmlCode}
-                      title={pop.title}
-                      className="w-full h-full pointer-events-none"
-                      sandbox="allow-scripts allow-same-origin"
-                      scrolling="no"
-                      loading="lazy"
-                    />
-                    <Link href={`/game/${pop.id}`} className="absolute inset-0" />
-                  </div>
-                  <div className="p-4 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-sm leading-snug truncate mb-1">{pop.title}</h3>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
-                      <Badge variant="secondary" className="px-1 py-0 h-4">{pop.class}</Badge>
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" />
-                        <span>{pop.views}</span>
-                      </div>
+            <div className="space-y-6">
+                {isLoadingComments ? (
+                    <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => <Skeleton key={`comm-skel-${i}`} className="h-20 w-full" />)}
                     </div>
-                  </div>
-                </Card>
-              ))}
+                ) : comments && comments.length > 0 ? (
+                comments.map(c => (
+                    <div key={c.id} className="flex items-start gap-4">
+                    <Avatar className="border">
+                        <AvatarImage src={c.authorPhotoURL || ''} alt={c.authorName} />
+                        <AvatarFallback>{(c.authorName.charAt(0) || 'U').toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 bg-secondary/50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                            <p className="font-semibold text-sm">{c.authorName}</p>
+                            <p className="text-xs text-muted-foreground">
+                                &bull; {c.createdAt?.toDate ? formatDistanceToNow(c.createdAt.toDate(), { addSuffix: true, locale: idLocale }) : ''}
+                            </p>
+                        </div>
+                        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{c.text}</p>
+                    </div>
+                    </div>
+                ))
+                ) : (
+                    <div className="text-center text-muted-foreground py-12">
+                        <h3 className="font-semibold">Belum ada komentar</h3>
+                        <p>Jadilah yang pertama memberikan masukan untuk game ini.</p>
+                    </div>
+                )}
             </div>
-            <div className="text-center mt-8">
-              <Button asChild variant="outline">
-                <Link href="/popular">Lihat Semua Game Populer</Link>
-              </Button>
+        </div>
+
+        {/* Popular Games Section */}
+        <div className="pt-12 border-t">
+            <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
+                <Flame className="h-6 w-6 text-orange-500" />
+                Game Edukasi Populer Lainnya
+            </h2>
+            {isActuallyLoadingPopular ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[...Array(4)].map((_, i) => <Skeleton key={`pop-skel-${i}`} className="aspect-[4/5] w-full" />)}
             </div>
-          </>
-        ) : (
-          <p className="text-center text-muted-foreground">Belum ada game populer yang ditampilkan.</p>
-        )}
+            ) : popularGames && popularGames.length > 0 ? (
+            <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {popularGames.map((pop) => (
+                    <Card key={pop.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                    <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
+                        <iframe
+                        srcDoc={pop.htmlCode}
+                        title={pop.title}
+                        className="w-full h-full pointer-events-none"
+                        sandbox="allow-scripts allow-same-origin"
+                        scrolling="no"
+                        loading="lazy"
+                        />
+                        <Link href={`/game/${pop.id}`} className="absolute inset-0" />
+                    </div>
+                    <div className="p-4 flex flex-col flex-grow">
+                        <h3 className="font-semibold text-sm leading-snug truncate mb-1">{pop.title}</h3>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
+                        <Badge variant="secondary" className="px-1 py-0 h-4">{pop.class}</Badge>
+                        <div className="flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            <span>{pop.views}</span>
+                        </div>
+                        </div>
+                    </div>
+                    </Card>
+                ))}
+                </div>
+                <div className="text-center mt-8">
+                <Button asChild variant="outline">
+                    <Link href="/popular">Jelajahi Semua Game Populer</Link>
+                </Button>
+                </div>
+            </>
+            ) : (
+            <p className="text-center text-muted-foreground">Belum ada game populer lainnya saat ini.</p>
+            )}
+        </div>
       </div>
     </div>
   );
