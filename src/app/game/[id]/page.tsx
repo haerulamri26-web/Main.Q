@@ -36,7 +36,7 @@ interface Comment {
   authorName: string;
   authorPhotoURL?: string;
   text: string;
-  createdAt: any; // Firestore timestamp
+  createdAt: any; 
 }
 
 const WhatsAppIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -80,7 +80,7 @@ export default function GamePage() {
     );
   }, [firestore, game]);
 
-  const { data: recommendedGames } = useCollection<Game>(recommendedQuery);
+  const { data: recommendedGames, isLoading: isLoadingRecommended } = useCollection<Game>(recommendedQuery);
 
   const popularQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -91,7 +91,7 @@ export default function GamePage() {
     );
   }, [firestore]);
 
-  const { data: popularGames } = useCollection<Game>(popularQuery);
+  const { data: popularGames, isLoading: isLoadingPopular } = useCollection<Game>(popularQuery);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -172,23 +172,6 @@ export default function GamePage() {
     }
   };
 
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <div className="space-y-4">
-          <Skeleton className="h-10 w-2/3" />
-          <Skeleton className="h-6 w-1/3" />
-        </div>
-        <Skeleton className="w-full aspect-video rounded-lg" />
-        <div className="max-w-3xl mx-auto space-y-6">
-           <Skeleton className="h-32 w-full" />
-           <Skeleton className="h-32 w-full" />
-        </div>
-      </div>
-    );
-  }
-
   if (error) {
      return (
       <div className="container mx-auto px-4 py-8 text-center">
@@ -199,7 +182,7 @@ export default function GamePage() {
     );
   }
   
-  if (!game) {
+  if (!isLoading && !game) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="text-2xl font-bold font-headline">Game tidak ditemukan</h1>
@@ -211,102 +194,161 @@ export default function GamePage() {
     );
   }
 
+  const jsonLd = game ? {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": game.title,
+    "description": game.description || `Mainkan game edukasi ${game.title} untuk mata pelajaran ${game.subject}.`,
+    "applicationCategory": "EducationalGame",
+    "operatingSystem": "Web",
+    "author": {
+      "@type": "Person",
+      "name": game.authorName
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "IDR"
+    }
+  } : null;
+
   const filteredRecommended = recommendedGames?.filter(g => g.id !== gameId).slice(0, 5) || [];
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-in fade-in-0 slide-in-from-top-4 duration-500">
+    <div className="container mx-auto px-4 py-8">
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      
+      {/* Game Header */}
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold truncate font-headline">{game.title}</h1>
-          <div className="flex items-center gap-2 text-muted-foreground mt-2">
-            <User className="h-5 w-5" />
-            <span className="text-base">
-              Dibuat oleh{' '}
-              <Link href={`/user/${game.userId}`} className="font-semibold text-foreground hover:underline">
-                {game.authorName}
-              </Link>
-            </span>
+        {isLoading ? (
+          <div className="space-y-2 w-full max-w-md">
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
           </div>
-        </div>
+        ) : (
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold truncate font-headline">{game?.title}</h1>
+            <div className="flex items-center gap-2 text-muted-foreground mt-2">
+              <User className="h-5 w-5" />
+              <span className="text-base">
+                Dibuat oleh{' '}
+                <Link href={`/user/${game?.userId}`} className="font-semibold text-foreground hover:underline">
+                  {game?.authorName}
+                </Link>
+              </span>
+            </div>
+          </div>
+        )}
 
-        <div className="flex items-center gap-2 flex-shrink-0 self-start pt-2">
-          <Badge variant="outline">{game.class}</Badge>
-          <Badge variant="outline">{game.subject}</Badge>
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Eye className="h-5 w-5" />
-            <span className="font-medium text-sm">{game.views || 0}</span>
+        {game && (
+          <div className="flex items-center gap-2 flex-shrink-0 self-start pt-2">
+            <Badge variant="outline">{game.class}</Badge>
+            <Badge variant="outline">{game.subject}</Badge>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Eye className="h-5 w-5" />
+              <span className="font-medium text-sm">{game.views || 0}</span>
+            </div>
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" title="Bagikan & Laporkan">
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2">
+                  <div className="flex flex-col gap-1">
+                    <Button variant="ghost" size="sm" className="justify-start px-2" onClick={handleShareWhatsApp}>
+                      <WhatsAppIcon className="mr-2 h-4 w-4" />
+                      WhatsApp
+                    </Button>
+                    <Button variant="ghost" size="sm" className="justify-start px-2" onClick={handleCopyLink}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Salin Tautan
+                    </Button>
+                    <Separator className="my-1" />
+                    <Button variant="ghost" asChild size="sm" className="justify-start px-2 text-destructive hover:text-destructive">
+                        <a href={reportUrl} target="_blank" rel="noopener noreferrer">
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                            Laporkan
+                        </a>
+                    </Button>
+                  </div>
+                </PopoverContent>
+            </Popover>
           </div>
-          <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" title="Bagikan & Laporkan">
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2">
-                <div className="flex flex-col gap-1">
-                  <Button variant="ghost" size="sm" className="justify-start px-2" onClick={handleShareWhatsApp}>
-                    <WhatsAppIcon className="mr-2 h-4 w-4" />
-                    WhatsApp
-                  </Button>
-                  <Button variant="ghost" size="sm" className="justify-start px-2" onClick={handleCopyLink}>
-                    <Copy className="mr-2 h-4 w-4" />
-                    Salin Tautan
-                  </Button>
-                  <Separator className="my-1" />
-                  <Button variant="ghost" asChild size="sm" className="justify-start px-2 text-destructive hover:text-destructive">
-                      <a href={reportUrl} target="_blank" rel="noopener noreferrer">
-                          <AlertTriangle className="mr-2 h-4 w-4" />
-                          Laporkan
-                      </a>
-                  </Button>
-                </div>
-              </PopoverContent>
-          </Popover>
-        </div>
+        )}
       </div>
       
+      {/* Game Frame */}
       <div 
         ref={iframeContainerRef}
         className="relative w-full aspect-video bg-gray-800 rounded-lg overflow-hidden shadow-lg border"
       >
-        <iframe
-          title={game.title}
-          srcDoc={game.htmlCode}
-          className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals"
-          allowFullScreen
-        />
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={handleFullscreen} 
-          title={isFullscreen ? "Keluar dari Mode Penuh" : "Mode Penuh"}
-          className="absolute top-3 right-3 z-10 bg-black/30 text-white hover:bg-black/50 border-white/50"
-        >
-          {isFullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
-        </Button>
+        {isLoading ? (
+          <Skeleton className="w-full h-full rounded-none" />
+        ) : game && (
+          <>
+            <iframe
+              title={game.title}
+              srcDoc={game.htmlCode}
+              className="w-full h-full border-0"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals"
+              allowFullScreen
+              loading="lazy"
+            />
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleFullscreen} 
+              title={isFullscreen ? "Keluar dari Mode Penuh" : "Mode Penuh"}
+              className="absolute top-3 right-3 z-10 bg-black/30 text-white hover:bg-black/50 border-white/50"
+            >
+              {isFullscreen ? <Shrink className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
+            </Button>
+          </>
+        )}
       </div>
 
       <div className="mt-12 space-y-8 max-w-3xl mx-auto">
+        {/* Description Section */}
         <div>
             <h2 className="text-2xl font-bold font-headline mb-3">Tentang Game Ini</h2>
-            <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                {game.description || `Jelajahi game interaktif "${game.title}" yang dibuat oleh ${game.authorName}. Game ini dirancang untuk mata pelajaran ${game.subject} dan cocok untuk level ${game.class}. Buka dalam mode layar penuh untuk pengalaman terbaik!`}
-            </p>
-        </div>
-        <div>
-            <h2 className="text-2xl font-bold font-headline mb-3">Tujuan Pembelajaran</h2>
-            <p className="text-foreground/80 leading-relaxed">
-                Game edukasi ini bertujuan untuk memberikan cara yang menyenangkan bagi para siswa untuk terlibat dengan materi pelajaran <strong>{game.subject}</strong>. Dengan mengubah pembelajaran menjadi sebuah permainan, diharapkan dapat meningkatkan retensi pengetahuan, keterampilan pemecahan masalah, dan motivasi belajar. Ini adalah alat yang hebat bagi siswa untuk berlatih secara mandiri dan bagi guru untuk memperkaya materi ajar di kelas.
-            </p>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : game && (
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                  {game.description || `Jelajahi game interaktif "${game.title}" yang dibuat oleh ${game.authorName}. Game ini dirancang untuk mata pelajaran ${game.subject} dan cocok untuk level ${game.class}. Buka dalam mode layar penuh untuk pengalaman terbaik!`}
+              </p>
+            )}
         </div>
 
-        {filteredRecommended.length > 0 && (
-          <div className="pt-6">
-            <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
-              <Gamepad2 className="h-6 w-6 text-primary" />
-              Rekomendasi Serupa
-            </h2>
+        {/* Learning Goal Section */}
+        <div>
+            <h2 className="text-2xl font-bold font-headline mb-3">Tujuan Pembelajaran</h2>
+            {isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : game && (
+              <p className="text-foreground/80 leading-relaxed">
+                  Game edukasi ini bertujuan untuk memberikan cara yang menyenangkan bagi para siswa untuk terlibat dengan materi pelajaran <strong>{game.subject}</strong>. Dengan mengubah pembelajaran menjadi sebuah permainan, diharapkan dapat meningkatkan retensi pengetahuan, keterampilan pemecahan masalah, dan motivasi belajar.
+              </p>
+            )}
+        </div>
+
+        {/* Recommended Games Section */}
+        <div className="pt-6">
+          <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
+            <Gamepad2 className="h-6 w-6 text-primary" />
+            Rekomendasi Serupa
+          </h2>
+          {isLoadingRecommended ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+            </div>
+          ) : filteredRecommended.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {filteredRecommended.map((rec) => (
                 <Link 
@@ -319,10 +361,13 @@ export default function GamePage() {
                 </Link>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-muted-foreground italic text-sm">Belum ada rekomendasi untuk mata pelajaran ini.</p>
+          )}
+        </div>
       </div>
 
+      {/* Discussion Section */}
       <div className="mt-12 max-w-3xl mx-auto">
         <h2 className="text-2xl font-bold font-headline mb-6 flex items-center gap-3">
             <MessageCircle className="h-7 w-7 text-primary" />
@@ -361,15 +406,13 @@ export default function GamePage() {
         )}
 
         <div className="space-y-6">
-            {isLoadingComments && (
-                <div className="flex justify-center items-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="ml-3">Memuat komentar...</p>
+            {isLoadingComments ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}
                 </div>
-            )}
-            {!isLoadingComments && comments && comments.length > 0 ? (
+            ) : comments && comments.length > 0 ? (
             comments.map(c => (
-                <div key={c.id} className="flex items-start gap-4 animate-in fade-in-0 duration-300">
+                <div key={c.id} className="flex items-start gap-4">
                 <Avatar className="border">
                     <AvatarImage src={c.authorPhotoURL || ''} alt={c.authorName} />
                     <AvatarFallback>{(c.authorName.charAt(0) || 'U').toUpperCase()}</AvatarFallback>
@@ -385,8 +428,7 @@ export default function GamePage() {
                 </div>
                 </div>
             ))
-            ) : null}
-            {!isLoadingComments && (!comments || comments.length === 0) && (
+            ) : (
                 <div className="text-center text-muted-foreground py-12">
                     <h3 className="font-semibold">Belum ada komentar</h3>
                     <p>Jadilah yang pertama berkomentar di game ini.</p>
@@ -395,45 +437,55 @@ export default function GamePage() {
         </div>
       </div>
 
-      {popularGames && popularGames.length > 0 && (
-        <div className="mt-20 pt-10 border-t">
-          <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
-            <Flame className="h-6 w-6 text-orange-500" />
-            Game Populer Lainnya
-          </h2>
+      {/* Popular Games Section */}
+      <div className="mt-20 pt-10 border-t">
+        <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
+          <Flame className="h-6 w-6 text-orange-500" />
+          Game Populer Lainnya
+        </h2>
+        {isLoadingPopular ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {popularGames.map((pop) => (
-              <Card key={pop.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
-                  <iframe
-                    srcDoc={pop.htmlCode}
-                    title={pop.title}
-                    className="w-full h-full pointer-events-none"
-                    sandbox="allow-scripts allow-same-origin"
-                    scrolling="no"
-                  />
-                  <Link href={`/game/${pop.id}`} className="absolute inset-0" />
-                </div>
-                <div className="p-4 flex flex-col flex-grow">
-                  <h3 className="font-semibold text-sm leading-snug truncate mb-1">{pop.title}</h3>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
-                    <Badge variant="secondary" className="px-1 py-0 h-4">{pop.class}</Badge>
-                    <div className="flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      <span>{pop.views}</span>
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="aspect-[4/5] w-full" />)}
+          </div>
+        ) : popularGames && popularGames.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {popularGames.map((pop) => (
+                <Card key={pop.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                  <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
+                    <iframe
+                      srcDoc={pop.htmlCode}
+                      title={pop.title}
+                      className="w-full h-full pointer-events-none"
+                      sandbox="allow-scripts allow-same-origin"
+                      scrolling="no"
+                      loading="lazy"
+                    />
+                    <Link href={`/game/${pop.id}`} className="absolute inset-0" />
+                  </div>
+                  <div className="p-4 flex flex-col flex-grow">
+                    <h3 className="font-semibold text-sm leading-snug truncate mb-1">{pop.title}</h3>
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-auto">
+                      <Badge variant="secondary" className="px-1 py-0 h-4">{pop.class}</Badge>
+                      <div className="flex items-center gap-1">
+                        <Eye className="h-3 w-3" />
+                        <span>{pop.views}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <Button asChild variant="outline">
-              <Link href="/popular">Lihat Semua Game Populer</Link>
-            </Button>
-          </div>
-        </div>
-      )}
+                </Card>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Button asChild variant="outline">
+                <Link href="/popular">Lihat Semua Game Populer</Link>
+              </Button>
+            </div>
+          </>
+        ) : (
+          <p className="text-center text-muted-foreground">Belum ada game populer yang ditampilkan.</p>
+        )}
+      </div>
     </div>
   );
 }
