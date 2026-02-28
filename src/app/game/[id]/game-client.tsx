@@ -466,4 +466,280 @@ export default function GameClient({ id }: { id: string }) {
             </h2>
             <Card className="bg-amber-50/50 border-amber-200">
               <CardContent className="pt-6">
-                <div className="space-y
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h4 className="font-semibold text-amber-900 mb-2">🎯 Sebelum Menggunakan</h4>
+                    <ul className="list-disc list-inside space-y-1 text-amber-800">
+                      <li>Pastikan perangkat siswa terhubung internet stabil.</li>
+                      <li>Uji coba game terlebih dahulu untuk memahami alur permainan.</li>
+                      <li>Siapkan pertanyaan pemantik untuk diskusi setelah permainan.</li>
+                    </ul>
+                  </div>
+                  <Separator className="bg-amber-200" />
+                  <div>
+                    <h4 className="font-semibold text-amber-900 mb-2">🚀 Saat Pembelajaran</h4>
+                    <ul className="list-disc list-inside space-y-1 text-amber-800">
+                      <li>Jelaskan tujuan pembelajaran sebelum siswa memulai game.</li>
+                      <li>Biarkan siswa mengeksplorasi secara mandiri, dampingi jika ada kesulitan.</li>
+                      <li>Catat poin-poin penting yang muncul selama permainan untuk bahan refleksi.</li>
+                    </ul>
+                  </div>
+                  <Separator className="bg-amber-200" />
+                  <div>
+                    <h4 className="font-semibold text-amber-900 mb-2">📝 Setelah Permainan</h4>
+                    <ul className="list-disc list-inside space-y-1 text-amber-800">
+                      <li>Adakan diskusi kelas: "Apa yang kalian pelajari dari game ini?"</li>
+                      <li>Hubungkan pengalaman game dengan materi teori di buku pelajaran.</li>
+                      <li>Berikan tugas lanjutan untuk memperkuat pemahaman konsep.</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* ✅ FAQ Section (Collapsible - Bagus untuk SEO & UX) */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
+              <HelpCircle className="w-6 h-6 text-primary" /> 
+              Pertanyaan Umum
+            </h2>
+            <div className="space-y-2">
+              {faqItems.map((item, index) => (
+                <Collapsible 
+                  key={index}
+                  open={openFAQ === item.q}
+                  onOpenChange={() => setOpenFAQ(openFAQ === item.q ? null : item.q)}
+                  className="border rounded-lg"
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50"
+                    >
+                      <span>{item.q}</span>
+                      {openFAQ === item.q ? 
+                        <ChevronUp className="w-4 h-4 ml-2 flex-shrink-0" /> : 
+                        <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
+                      }
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4 pt-0 text-sm text-muted-foreground">
+                    {item.a}
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
+            </div>
+          </section>
+
+          {/* ✅ Diskusi & Komentar (Engagement Signal) */}
+          <section className="pt-10 border-t" id="komentar">
+            <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
+              <Gamepad2 className="w-6 h-6 text-primary" /> 
+              Diskusi & Komentar ({comments?.length || 0})
+            </h2>
+            
+            {user ? (
+              <form onSubmit={handleCommentSubmit} className="mb-10 flex gap-4">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <Textarea 
+                    value={comment} 
+                    onChange={e => setComment(e.target.value)} 
+                    placeholder="Bagikan pengalaman atau masukan Anda tentang game ini..." 
+                    rows={3}
+                    className="resize-none"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" type="button" onClick={() => setComment('')}>
+                      Batal
+                    </Button>
+                    <Button disabled={isSubmitting || !comment.trim()} size="sm">
+                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />} 
+                      Kirim Komentar
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <Card className="mb-10">
+                <CardContent className="pt-6 text-center">
+                  <User className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-4">Masuk untuk ikut berdiskusi dan berbagi pengalaman</p>
+                  <Button asChild variant="outline">
+                    <Link href="/login">Login Sekarang</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            
+            <div className="space-y-4">
+              {isLoadingComments ? (
+                Array(3).fill(0).map((_, i) => (
+                  <div key={i} className="flex gap-4 p-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-1/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-3/4" />
+                    </div>
+                  </div>
+                ))
+              ) : comments?.length ? (
+                comments.map(c => (
+                  <div key={c.id} className="flex gap-4 p-4 bg-muted/20 rounded-xl">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={c.authorPhotoURL} alt={c.authorName} />
+                      <AvatarFallback>U</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm">{c.authorName}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {c.createdAt?.toDate && formatDistanceToNow(c.createdAt.toDate(), { addSuffix: true, locale: idLocale })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{c.text}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground py-8">Belum ada komentar. Jadilah yang pertama berbagi!</p>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* ✅ Sidebar Column */}
+        <aside className="space-y-8">
+          
+          {/* Info Card */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Info className="w-4 h-4" /> Informasi Game
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs space-y-3">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subjek:</span>
+                <span className="font-semibold">{subjectDisplay}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Jenjang:</span>
+                <span className="font-semibold">{game.class}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Format:</span>
+                <span className="font-semibold">HTML5 / Web</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Bahasa:</span>
+                <span className="font-semibold">Indonesia</span>
+              </div>
+              <Separator />
+              <Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 justify-start" asChild>
+                <a href={reportUrl}>
+                  <AlertTriangle className="w-3 h-3 mr-2" /> Laporkan Konten
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* ✅ AdSense Slot: Sidebar (Vertical) */}
+          <div className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-20">
+            <ins className="adsbygoogle"
+                 style={{ display: 'block' }}
+                 data-ad-client="ca-pub-8378725062743955"
+                 data-ad-slot="1122334455"
+                 data-ad-format="vertical"
+                 data-full-width-responsive="false"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+          </div>
+
+          {/* Game Sejenis */}
+          <section className="space-y-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-500" /> 
+              Game Sejenis
+            </h3>
+            <div className="space-y-3">
+              {isLoadingRecommended ? (
+                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+              ) : filteredRecommended.length ? (
+                filteredRecommended.map(rec => (
+                  <Link 
+                    key={rec.id} 
+                    href={`/game/${rec.id}`} 
+                    className="block p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-all group"
+                  >
+                    <p className="text-sm font-medium group-hover:text-primary line-clamp-2">{rec.title}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{rec.class} • {rec.views} Views</p>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">Belum ada game sejenis.</p>
+              )}
+            </div>
+            <Button variant="ghost" size="sm" className="w-full text-primary" asChild>
+              <Link href={`/?subject=${game.subject}`}>
+                Lihat semua game {subjectDisplay} →
+              </Link>
+            </Button>
+          </section>
+
+          {/* Popular Games */}
+          <section className="space-y-4">
+            <h3 className="font-bold flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-500" /> 
+              Paling Populer
+            </h3>
+            <div className="space-y-3">
+              {isLoadingPopular ? (
+                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+              ) : popularGames?.slice(0, 3).map(pop => (
+                <Link 
+                  key={pop.id} 
+                  href={`/game/${pop.id}`} 
+                  className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                >
+                  <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden">
+                    <div className="w-full h-full opacity-50" style={{ backgroundImage: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)` }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate group-hover:text-primary">{pop.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{pop.views} Views</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      {/* ✅ Final CTA Section */}
+      <section className="mt-20 pt-10 border-t text-center">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <h3 className="text-xl font-bold">🎮 Jelajahi Lebih Banyak Game Edukasi</h3>
+          <p className="text-muted-foreground">
+            Temukan ratusan media pembelajaran interaktif lainnya untuk berbagai mata pelajaran dan jenjang.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button asChild variant="outline">
+              <Link href="/games">Lihat Semua Game</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/?subject=matematika">Game Matematika</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link href="/?subject=agama">Game Agama</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    </article>
+  );
+}
