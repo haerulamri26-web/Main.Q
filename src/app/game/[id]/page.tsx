@@ -75,7 +75,7 @@ export default async function Page({ params }: { params: { id: string } }) {
       {/* Script AdSense - Ganti ID dengan milik Anda */}
       <Script
         async
-        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8378725062743955"
         crossOrigin="anonymous"
         strategy="afterInteractive"
       />
