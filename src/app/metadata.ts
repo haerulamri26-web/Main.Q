@@ -1,4 +1,3 @@
-// app/metadata.ts
 import { Metadata } from 'next';
 
 export const SITE_URL = 'https://mainq.my.id';
@@ -40,7 +39,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     images: [
       {
-        url: `${SITE_URL}/og-image.png`,
+        url: `${SITE_URL}/logo.png`,
         width: 1200,
         height: 630,
         alt: `${SITE_NAME} - Platform Game Edukasi Indonesia`,
@@ -51,7 +50,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: `${SITE_NAME} - Game Edukasi Interaktif`,
     description: SITE_DESCRIPTION,
-    images: [`${SITE_URL}/og-image.png`],
+    images: [`${SITE_URL}/logo.png`],
     creator: '@mainq',
   },
   robots: {

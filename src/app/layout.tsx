@@ -1,5 +1,4 @@
-'use client';
-
+import type { Metadata } from 'next';
 import { Inter, Fredoka } from 'next/font/google';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,6 +11,7 @@ import { GoogleAnalytics } from '@/components/GoogleAnalytics';
 import { Suspense } from 'react';
 import { AdSense } from '@/components/AdSense';
 import Script from 'next/script';
+import { metadata as siteMetadata, SITE_URL, SITE_NAME, SITE_DESCRIPTION } from './metadata';
 
 // ============================================================================
 // FONT INITIALIZATION
@@ -29,19 +29,7 @@ const fredoka = Fredoka({
   display: 'swap',
 });
 
-// ============================================================================
-// CONSTANTS - ✅ Tanpa trailing spaces!
-// ============================================================================
-const SITE_URL = 'https://mainq.my.id';
-const SITE_NAME = 'MAIN Q';
-const SITE_DESCRIPTION = 'Platform game edukasi interaktif untuk guru dan siswa Indonesia. Mainkan kuis, simulasi, dan media pembelajaran HTML5 sesuai Kurikulum Merdeka. Gratis, tanpa install.';
-const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
-
-// ============================================================================
-// METADATA GENERATION (Server Component - di luar 'use client')
-// ============================================================================
-// ⚠️ PENTING: generateMetadata harus di file terpisah atau layout tanpa 'use client'
-// Untuk sekarang, kita tambahkan via component JSON-LD di bawah
+export const metadata: Metadata = siteMetadata;
 
 // ============================================================================
 // HELPER: Generate Global JSON-LD Schema
@@ -121,15 +109,11 @@ const MainQLogo = ({ className }: { className?: string }) => (
       width={100}
       height={45}
       priority
-      // ✅ Optimasi: Tambahkan sizes untuk responsive loading
       sizes="(max-width: 768px) 100px, 100px"
     />
   </div>
 );
 
-// ============================================================================
-// MAIN LAYOUT COMPONENT
-// ============================================================================
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -138,24 +122,20 @@ export default function RootLayout({
   return (
     <html lang="id" className={`${inter.variable} ${fredoka.variable}`}>
       <head>
-        {/* ✅ Meta Tags Global */}
-        <meta name="google-site-verification" content="hNuCsI-8kIhGijjApCawbZ3MF1_5DN2XxvPL6jZ_rQ8" />
+        {/* Meta Tags Global */}
         <meta name="google-adsense-child-directed-treatment" content="true" />
         <meta name="google-adsense-under-age-of-consent" content="true" />
         
-        {/* ✅ Open Graph Defaults */}
+        {/* Open Graph Defaults */}
         <meta property="og:site_name" content={SITE_NAME} />
         <meta property="og:locale" content="id_ID" />
         <meta property="og:type" content="website" />
         
-        {/* ✅ Twitter Card Defaults */}
+        {/* Twitter Card Defaults */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@mainq" />
         
-        {/* ✅ Robots Global */}
-        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-        
-        {/* ✅ JSON-LD Global Schema */}
+        {/* JSON-LD Global Schema */}
         <Script
           id="global-schema"
           type="application/ld+json"
@@ -164,8 +144,17 @@ export default function RootLayout({
           }}
           strategy="afterInteractive"
         />
+
+        {/* Global AdSense Initialization */}
+        <Script
+          id="adsense-init"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(window.adsbygoogle = window.adsbygoogle || []).push({});`,
+          }}
+        />
         
-        {/* ✅ Preconnect untuk performa */}
+        {/* Preconnect untuk performa */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
@@ -214,17 +203,13 @@ export default function RootLayout({
                 <p className="text-sm text-muted-foreground" itemProp="copyrightYear">
                   &copy; {new Date().getFullYear()} {SITE_NAME}. Dibuat untuk para guru dan siswa.
                 </p>
-                {/* ✅ Tambahan: Copyright dengan schema */}
                 <span itemProp="copyrightHolder" itemScope itemType="https://schema.org/Organization" className="sr-only">
-                  <span itemProp="name">{SITE_NAME}</span>
+                  <span itemprop="name">{SITE_NAME}</span>
                 </span>
               </div>
             </footer>
           </div>
         </FirebaseClientProvider>
-        
-        {/* ✅ Optional: PWA Manifest Link (jika ada) */}
-        {/* <link rel="manifest" href="/manifest.json" /> */}
       </body>
     </html>
   );

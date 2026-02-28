@@ -13,7 +13,7 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import Script from 'next/script';
-import { metadata, SITE_URL, SITE_NAME, SITE_DESCRIPTION } from './metadata';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from './metadata';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -55,11 +55,6 @@ function generateHomepageJsonLd() {
           "width": 600,
           "height": 60
         },
-        "sameAs": [
-          "https://www.facebook.com/mainq",
-          "https://www.instagram.com/mainq",
-          "https://www.youtube.com/@mainq"
-        ],
         "contactPoint": {
           "@type": "ContactPoint",
           "contactType": "customer support",
@@ -80,7 +75,7 @@ function generateHomepageJsonLd() {
           "@type": "SearchAction",
           "target": {
             "@type": "EntryPoint",
-            "urlTemplate": `${SITE_URL}/games?search={search_term_string}`
+            "urlTemplate": `${SITE_URL}/?search={search_term_string}`
           },
           "query-input": "required name=search_term_string"
         }
@@ -98,30 +93,6 @@ function generateHomepageJsonLd() {
           "Kurikulum Merdeka",
           "Pembelajaran Interaktif",
           "Gamifikasi Pendidikan"
-        ]
-      },
-      {
-        "@type": "ItemList",
-        "@id": `${SITE_URL}#games-list`,
-        "itemListElement": [
-          {
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Game Edukasi Matematika",
-            "url": `${SITE_URL}/games?subject=matematika`
-          },
-          {
-            "@type": "ListItem",
-            "position": 2,
-            "name": "Game Edukasi IPA",
-            "url": `${SITE_URL}/games?subject=ipa`
-          },
-          {
-            "@type": "ListItem",
-            "position": 3,
-            "name": "Game Edukasi Bahasa",
-            "url": `${SITE_URL}/games?subject=bahasa`
-          }
         ]
       }
     ]
@@ -143,11 +114,11 @@ export default function Home() {
     return query(
       collection(firestore, 'publishedGames'), 
       orderBy('uploadDate', 'desc'),
-      limit(100) // Limit untuk performa
+      limit(100)
     );
   }, [firestore]);
 
-  const {  games, isLoading, error } = useCollection<Game>(gamesQuery);
+  const { data: games, isLoading, error } = useCollection<Game>(gamesQuery);
 
   const uniqueSubjects = useMemo(() => {
     if (!games) return [];
@@ -190,7 +161,6 @@ export default function Home() {
 
   return (
     <>
-      {/* ✅ JSON-LD Global Schema */}
       <Script
         id="homepage-schema"
         type="application/ld+json"
@@ -221,7 +191,7 @@ export default function Home() {
                 placeholder="Cari game edukasi..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
               />
             </div>
             
@@ -252,8 +222,7 @@ export default function Home() {
               alt="Guru dan siswa belajar menggunakan media interaktif"
               className="rounded-lg shadow-xl"
               priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              loading="eager"
+              data-ai-hint="teacher students"
             />
           </div>
         </section>
@@ -267,7 +236,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Filters */}
           <div className="flex flex-wrap items-center gap-2 mb-8">
             <Button onClick={() => setSelectedLevel('all')} variant={selectedLevel === 'all' ? 'default' : 'outline'} size="lg">
                 Semua Level
@@ -296,7 +264,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Games Grid */}
           <div>
             {error && <p className="text-destructive text-center py-8 font-semibold">Gagal memuat daftar game: {error.message}</p>}
             
@@ -310,7 +277,6 @@ export default function Home() {
                   {paginatedGames.map((game) => (
                     <Card key={game.id} className="flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 group border">
                       <div className="relative aspect-video overflow-hidden border-b bg-gray-800">
-                        {/* Lazy load iframe preview */}
                         <iframe
                           srcDoc={game.htmlCode}
                           title={`Pratinjau ${game.title}`}
@@ -318,7 +284,6 @@ export default function Home() {
                           sandbox="allow-scripts allow-same-origin"
                           scrolling="no"
                           loading="lazy"
-                          referrerPolicy="no-referrer"
                         />
                         <Link
                           href={`/game/${game.id}`}
@@ -358,7 +323,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Pagination */}
                 {totalPages > 1 && (
                   <div className="mt-12 flex justify-center items-center gap-4">
                     <Button
@@ -423,8 +387,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* SEO Text Block - Enhanced for AdSense */}
-        <section className="bg-card border p-8 rounded-lg mt-16" itemScope itemType="https://schema.org/WebPage">
+        {/* SEO Text Block */}
+        <section className="bg-card border p-8 rounded-lg mt-16">
           <h2 className="text-2xl font-bold font-headline mb-4 flex items-center gap-2">
             <BookOpen className="text-primary" />
             Platform Media Pembelajaran Interaktif Nomor 1
@@ -438,7 +402,6 @@ export default function Home() {
             </p>
           </div>
           
-          {/* Structured features list for SEO */}
           <div className="mt-6 pt-6 border-t">
             <h3 className="font-semibold mb-3">🎯 Fitur Utama {SITE_NAME}:</h3>
             <ul className="grid md:grid-cols-2 gap-2 text-sm">
@@ -448,21 +411,18 @@ export default function Home() {
               <li className="flex items-center gap-2">✅ Dibuat oleh guru Indonesia</li>
               <li className="flex items-center gap-2">✅ Gratis dan aman untuk anak</li>
               <li className="flex items-center gap-2">✅ Bisa dimainkan di HP, tablet, atau laptop</li>
-              <li className="flex items-center gap-2">✅ Progres belajar tersimpan otomatis</li>
-              <li className="flex items-center gap-2">✅ Komunitas guru berbagi konten</li>
             </ul>
           </div>
         </section>
 
-        {/* FAQ Section for Homepage */}
+        {/* FAQ Section */}
         <section className="mt-16 space-y-6">
           <h2 className="text-2xl font-bold font-headline text-center">❓ Pertanyaan Umum</h2>
           <div className="max-w-3xl mx-auto space-y-4">
             {[
               { q: `Apakah ${SITE_NAME} benar-benar gratis?`, a: `Ya, seluruh fitur di ${SITE_NAME} dapat diakses 100% gratis oleh guru, siswa, dan orang tua. Tidak ada biaya tersembunyi atau langganan.` },
               { q: "Apakah perlu install aplikasi?", a: "Tidak perlu! Semua game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern (Chrome, Edge, Firefox, Safari) tanpa download." },
-              { q: "Cocok untuk kurikulum apa?", a: "Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka, sehingga relevan untuk pembelajaran di sekolah Indonesia." },
-              { q: "Bagaimana cara guru mengupload game?", a: "Guru dapat mendaftar akun, lalu upload file HTML game yang dibuat dari Canva, AI, atau tools lainnya melalui halaman Upload. Konten akan direview sebelum tayang." }
+              { q: "Cocok untuk kurikulum apa?", a: "Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka, sehingga relevan untuk pembelajaran di sekolah Indonesia." }
             ].map((faq, i) => (
               <details key={i} className="group bg-card border rounded-lg p-4 cursor-pointer">
                 <summary className="font-semibold list-none flex justify-between items-center">
