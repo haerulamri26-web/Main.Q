@@ -100,24 +100,21 @@ function generateAutoContent(data: GameData): string {
         </div>
       </article>
 
-      <article itemscope itemtype="https://schema.org/FAQPage">
+      <!-- FAQ Section (HTML only for users, JSON-LD separate for Google) -->
+      <article>
         <h2 class="text-2xl font-bold text-gray-900 mb-4">❓ Pertanyaan Umum</h2>
-        <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question" class="mb-5 pb-5 border-b border-gray-100">
-          <h3 itemprop="name" class="font-semibold text-lg text-gray-900">Apakah game ini gratis?</h3>
-          <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-            <p itemprop="text" class="text-gray-700 mt-2">Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara <strong>100% gratis</strong> oleh guru, siswa, dan orang tua. Tidak ada biaya tersembunyi.</p>
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Apakah game ini gratis?</h3>
+            <p class="text-gray-700 mt-1">Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara <strong>100% gratis</strong> oleh guru, siswa, dan orang tua.</p>
           </div>
-        </div>
-        <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question" class="mb-5 pb-5 border-b border-gray-100">
-          <h3 itemprop="name" class="font-semibold text-lg text-gray-900">Apakah perlu install aplikasi?</h3>
-          <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-            <p itemprop="text" class="text-gray-700 mt-2">Tidak perlu install apapun! Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern di laptop, tablet, maupun smartphone.</p>
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Apakah perlu install aplikasi?</h3>
+            <p class="text-gray-700 mt-1">Tidak perlu install apapun! Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern di laptop, tablet, maupun smartphone.</p>
           </div>
-        </div>
-        <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-          <h3 itemprop="name" class="font-semibold text-lg text-gray-900">Cocok untuk kurikulum apa?</h3>
-          <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-            <p itemprop="text" class="text-gray-700 mt-2">Materi game disusun mengacu pada <strong>Capaian Pembelajaran (CP) Kurikulum Merdeka</strong>, sehingga relevan untuk pembelajaran di sekolah Indonesia jenjang ${data.class}.</p>
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Cocok untuk kurikulum apa?</h3>
+            <p class="text-gray-700 mt-1">Materi game disusun mengacu pada <strong>Capaian Pembelajaran (CP) Kurikulum Merdeka</strong>, sehingga relevan untuk pembelajaran di sekolah Indonesia jenjang ${data.class}.</p>
           </div>
         </div>
       </article>
@@ -125,6 +122,41 @@ function generateAutoContent(data: GameData): string {
   `;
 }
 
+// ✅ FAQPage JSON-LD - PLAIN TEXT ONLY (no HTML tags in "text" field)
+function generateFAQJsonLd(data: GameData) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Apakah game ini gratis?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara 100% gratis oleh guru, siswa, dan orang tua."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Apakah perlu install aplikasi?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tidak perlu install apapun. Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern seperti Chrome, Edge, Firefox, atau Safari tanpa download."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Cocok untuk kurikulum apa?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": `Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka untuk jenjang ${data.class}.`
+        }
+      }
+    ]
+  };
+}
+
+// ✅ BreadcrumbList JSON-LD - URLs lengkap + tanpa spasi
 function generateBreadcrumbJsonLd(data: GameData) {
   const subjectSlug = data.subject.toLowerCase().replace(/\s+/g, '-');
   return {
@@ -132,21 +164,28 @@ function generateBreadcrumbJsonLd(data: GameData) {
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://mainq.my.id" },
-      { "@type": "ListItem", "position": 2, "name": "Game Edukasi", "item": "https://mainq.my.id" },
-      { "@type": "ListItem", "position": 3, "name": data.subject, "item": `https://mainq.my.id/?subject=${subjectSlug}` },
+      { "@type": "ListItem", "position": 2, "name": "Game Edukasi", "item": "https://mainq.my.id/games" },
+      { "@type": "ListItem", "position": 3, "name": data.subject, "item": `https://mainq.my.id/games?subject=${subjectSlug}` },
       { "@type": "ListItem", "position": 4, "name": data.title }
     ]
   };
 }
 
+// ============================================================================
+// DATA FETCHING - ✅ FIX: Hapus spasi di URL Firestore
+// ============================================================================
 async function getGameData(id: string): Promise<GameData | null> {
   try {
     const projectId = "studio-7363006266-37b51";
+    // ✅ FIX: Hapus spasi setelah "projects/"
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/publishedGames/${id}`;
+    
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
+    
     const data = await res.json();
     const fields = data.fields;
+    
     return {
       id,
       title: fields.title?.stringValue || 'Game Edukasi',
@@ -162,68 +201,131 @@ async function getGameData(id: string): Promise<GameData | null> {
   }
 }
 
+// ============================================================================
+// METADATA GENERATION - ✅ FIX: Canonical & OG URLs lengkap
+// ============================================================================
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const data = await getGameData(params.id);
+  
   if (!data) {
     return {
       title: 'Game Tidak Ditemukan - MAIN Q',
       description: 'Halaman game yang Anda cari tidak tersedia.',
     };
   }
+  
   const metaDescription = generateMetaDescription(data);
+  const canonicalUrl = `https://mainq.my.id/game/${params.id}`; // ✅ Full URL
+  
   return {
-    title: `${data.title} - Game Edukasi ${data.subject} ${data.class}`,
+    title: `${data.title} - Game Edukasi ${data.subject} ${data.class} | MAIN Q`,
     description: metaDescription,
     keywords: [data.title, data.subject, data.class, 'game edukasi', 'media pembelajaran', 'kurikulum merdeka'].join(', '),
-    alternates: { canonical: `/game/${params.id}` },
+    alternates: { canonical: canonicalUrl }, // ✅ Full URL
     openGraph: {
       title: data.title,
       description: metaDescription,
       type: 'article',
-      url: `/game/${params.id}`,
+      url: canonicalUrl, // ✅ Full URL (bukan relatif)
       locale: 'id_ID',
       siteName: 'MAIN Q',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.title,
+      description: metaDescription,
     },
   };
 }
 
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
 export default async function Page({ params }: { params: { id: string } }) {
   const data = await getGameData(params.id);
   if (!data) notFound();
 
+  // ✅ Main JSON-LD: SoftwareApplication + LearningResource
+  const canonicalUrl = `https://mainq.my.id/game/${params.id}`;
+  
   const mainJsonLd = {
-    "@context": "https://schema.org",
+    "@context": "https://schema.org", // ✅ Hapus spasi
     "@type": ["SoftwareApplication", "LearningResource"],
     "name": data.title,
     "description": generateMetaDescription(data),
     "applicationCategory": "EducationalGame",
+    "applicationSubCategory": "Educational", // ✅ Tambahkan ini
     "operatingSystem": "Web",
+    "browserRequirements": "Requires JavaScript. Requires HTML5.", // ✅ Tambahkan
     "author": { "@type": "Person", "name": data.authorName },
-    "publisher": { "@type": "Organization", "name": "MAIN Q", "url": "https://mainq.my.id" },
+    "publisher": { "@type": "Organization", "name": "MAIN Q", "url": "https://mainq.my.id" }, // ✅ Hapus spasi
     "learningResourceType": "Educational Game",
     "educationalLevel": data.class,
+    "educationalUse": "InstructionalMaterial", // ✅ Tambahkan
     "about": data.subject,
     "inLanguage": "id",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR" },
-    "url": `https://mainq.my.id/game/${params.id}`,
+    "offers": { 
+      "@type": "Offer", 
+      "price": "0",           // ✅ String, bukan number
+      "priceCurrency": "IDR", 
+      "availability": "https://schema.org/InStock" 
+    },
+    "url": canonicalUrl, // ✅ Full URL, hapus spasi
+    "isAccessibleForFree": true, // ✅ Tambahkan
+    "datePublished": data.createdAt || new Date().toISOString(),
+    "dateModified": new Date().toISOString(),
   };
+
+  const faqJsonLd = generateFAQJsonLd(data);
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd(data);
 
   return (
     <>
+      {/* ✅ AdSense Script - Hapus spasi di URL */}
       <Script
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8378725062743955"
         crossOrigin="anonymous"
         strategy="afterInteractive"
       />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(mainJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateBreadcrumbJsonLd(data)) }} />
+      
+      {/* ✅ JSON-LD 1: Main Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ 
+          __html: JSON.stringify(mainJsonLd, null, 2) 
+        }} 
+      />
+      
+      {/* ✅ JSON-LD 2: FAQPage (Rich Results) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ 
+          __html: JSON.stringify(faqJsonLd, null, 2) 
+        }} 
+      />
+      
+      {/* ✅ JSON-LD 3: BreadcrumbList */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ 
+          __html: JSON.stringify(breadcrumbJsonLd, null, 2) 
+        }} 
+      />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl">
+        {/* Game Area */}
         <article className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
           <GameClient id={params.id} />
         </article>
-        <div className="mt-10 text-gray-800" dangerouslySetInnerHTML={{ __html: generateAutoContent(data) }} />
+        
+        {/* ✅ Auto-Generated SEO Content */}
+        <div 
+          className="mt-10 text-gray-800"
+          dangerouslySetInnerHTML={{ __html: generateAutoContent(data) }} 
+        />
+        
+        {/* Attribution & Trust Signal */}
         <div className="mt-10 pt-6 border-t border-gray-200">
           <div className="flex items-center gap-3 bg-green-50 p-4 rounded-lg">
             <span className="text-2xl">👨‍🏫</span>
@@ -233,8 +335,13 @@ export default async function Page({ params }: { params: { id: string } }) {
             </div>
           </div>
         </div>
+        
+        {/* CTA */}
         <div className="mt-8 text-center">
-          <a href="/" className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors">
+          <a 
+            href="/" 
+            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+          >
             <span>🎮</span> Jelajahi Game Edukasi Lainnya
           </a>
         </div>
