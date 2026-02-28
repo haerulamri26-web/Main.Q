@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -126,6 +127,23 @@
         "views"
       ]
     },
+    "Article": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Article",
+      "type": "object",
+      "description": "Represents an article or post in the teacher community.",
+      "properties": {
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoURL": { "type": "string", "format": "uri" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "enum": ["Pendidikan", "Prompting", "Tutorial", "Tanya Jawab"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "views": { "type": "number" }
+      },
+      "required": ["userId", "authorName", "title", "content", "category", "createdAt", "views"]
+    },
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
@@ -154,83 +172,39 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Comment",
       "type": "object",
-      "description": "Represents a comment on a game.",
+      "description": "Represents a comment on a content.",
       "properties": {
-        "gameId": {
-          "type": "string",
-          "description": "Reference to the game being commented on."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who wrote the comment."
-        },
-        "authorName": {
-          "type": "string",
-          "description": "The display name of the user who wrote the comment."
-        },
-        "authorPhotoURL": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL to the commenter's profile picture."
-        },
-        "text": {
-          "type": "string",
-          "description": "The content of the comment."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "The date and time when the comment was posted, as a server timestamp.",
-          "format": "date-time"
-        }
+        "gameId": { "type": "string" },
+        "labId": { "type": "string" },
+        "articleId": { "type": "string" },
+        "userId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoURL": { "type": "string", "format": "uri" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": [
-        "gameId",
         "userId",
         "authorName",
         "text",
         "createdAt"
       ]
     },
-    "LabComment": {
+    "Notification": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LabComment",
+      "title": "Notification",
       "type": "object",
-      "description": "Represents a comment on a lab.",
+      "description": "Represents a notification for a user.",
       "properties": {
-        "labId": {
-          "type": "string",
-          "description": "Reference to the lab being commented on."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who wrote the comment."
-        },
-        "authorName": {
-          "type": "string",
-          "description": "The display name of the user who wrote the comment."
-        },
-        "authorPhotoURL": {
-          "type": "string",
-          "format": "uri",
-          "description": "URL to the commenter's profile picture."
-        },
-        "text": {
-          "type": "string",
-          "description": "The content of the comment."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "The date and time when the comment was posted, as a server timestamp.",
-          "format": "date-time"
-        }
+        "userId": { "type": "string", "description": "Recipient UID" },
+        "senderName": { "type": "string" },
+        "contentTitle": { "type": "string" },
+        "contentLink": { "type": "string" },
+        "type": { "type": "string", "enum": ["comment", "like", "system"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "labId",
-        "userId",
-        "authorName",
-        "text",
-        "createdAt"
-      ]
+      "required": ["userId", "senderName", "contentTitle", "contentLink", "type", "read", "createdAt"]
     }
   },
   "auth": {
@@ -244,31 +218,49 @@
       "schema": {
         "$ref": "#/backend/entities/UploadedGame"
       },
-      "description": "Stores published games for public access. Anyone can read, while creation, updates, and deletion are restricted to the content owner."
+      "description": "Stores published games."
     },
     "/publishedGames/{gameId}/comments/{commentId}": {
       "schema": {
         "$ref": "#/backend/entities/Comment"
       },
-      "description": "Stores comments for a specific game. Anyone can read, signed-in users can create, and owners can delete/update."
+      "description": "Comments for games."
     },
     "/publishedLabs/{labId}": {
       "schema": {
         "$ref": "#/backend/entities/UploadedLab"
       },
-      "description": "Stores published lab simulations for public access. Anyone can read, while creation, updates, and deletion are restricted to the content owner."
+      "description": "Stores published lab simulations."
     },
     "/publishedLabs/{labId}/comments/{commentId}": {
       "schema": {
-        "$ref": "#/backend/entities/LabComment"
+        "$ref": "#/backend/entities/Comment"
       },
-      "description": "Stores comments for a specific lab. Anyone can read, signed-in users can create, and owners can delete/update."
+      "description": "Comments for labs."
+    },
+    "/articles/{articleId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Article"
+      },
+      "description": "Stores community articles."
+    },
+    "/articles/{articleId}/comments/{commentId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Comment"
+      },
+      "description": "Comments for articles."
+    },
+    "/notifications/{notifId}": {
+      "schema": {
+        "$ref": "#/backend/entities/Notification"
+      },
+      "description": "User notifications."
     },
     "/users/{userId}": {
       "schema": {
         "$ref": "#/backend/entities/UserProfile"
       },
-      "description": "Stores public user profile data, editable by the owner."
+      "description": "Public user profiles."
     }
   }
 }
