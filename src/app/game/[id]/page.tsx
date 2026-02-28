@@ -100,7 +100,7 @@ function generateAutoContent(data: GameData): string {
         </div>
       </article>
 
-      <!-- ✅ FAQ Section - HTML ONLY (no schema markup, JSON-LD terpisah) -->
+      <!-- FAQ Section: HTML ONLY, no schema markup -->
       <article>
         <h2 class="text-2xl font-bold text-gray-900 mb-4">❓ Pertanyaan Umum</h2>
         <div class="space-y-4">
@@ -122,7 +122,7 @@ function generateAutoContent(data: GameData): string {
   `;
 }
 
-// ✅ FAQPage JSON-LD - PLAIN TEXT ONLY (no HTML tags in "text" field)
+// ✅ FAQPage JSON-LD - PLAIN TEXT ONLY, NO TRAILING SPACES
 function generateFAQJsonLd(data: GameData) {
   return {
     "@context": "https://schema.org",
@@ -149,14 +149,14 @@ function generateFAQJsonLd(data: GameData) {
         "name": "Cocok untuk kurikulum apa?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": `Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka untuk jenjang ${data.class}.`
+          "text": "Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka untuk jenjang " + data.class + "."
         }
       }
     ]
   };
 }
 
-// ✅ BreadcrumbList JSON-LD - URLs lengkap + tanpa spasi
+// ✅ BreadcrumbList JSON-LD - NO TRAILING SPACES
 function generateBreadcrumbJsonLd(data: GameData) {
   const subjectSlug = data.subject.toLowerCase().replace(/\s+/g, '-');
   return {
@@ -165,19 +165,18 @@ function generateBreadcrumbJsonLd(data: GameData) {
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://mainq.my.id" },
       { "@type": "ListItem", "position": 2, "name": "Game Edukasi", "item": "https://mainq.my.id/games" },
-      { "@type": "ListItem", "position": 3, "name": data.subject, "item": `https://mainq.my.id/games?subject=${subjectSlug}` },
+      { "@type": "ListItem", "position": 3, "name": data.subject, "item": "https://mainq.my.id/games?subject=" + subjectSlug },
       { "@type": "ListItem", "position": 4, "name": data.title }
     ]
   };
 }
 
 // ============================================================================
-// DATA FETCHING - ✅ FIX: Hapus spasi di URL Firestore
+// DATA FETCHING - NO TRAILING SPACES
 // ============================================================================
 async function getGameData(id: string): Promise<GameData | null> {
   try {
     const projectId = "studio-7363006266-37b51";
-    // ✅ FIX: Hapus spasi setelah "projects/"
     const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/publishedGames/${id}`;
     
     const res = await fetch(url, { next: { revalidate: 3600 } });
@@ -202,7 +201,7 @@ async function getGameData(id: string): Promise<GameData | null> {
 }
 
 // ============================================================================
-// METADATA GENERATION - ✅ FIX: Canonical & OG URLs lengkap
+// METADATA GENERATION - NO TRAILING SPACES
 // ============================================================================
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const data = await getGameData(params.id);
@@ -215,18 +214,18 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
   
   const metaDescription = generateMetaDescription(data);
-  const canonicalUrl = `https://mainq.my.id/game/${params.id}`; // ✅ Full URL
+  const canonicalUrl = `https://mainq.my.id/game/${params.id}`;
   
   return {
     title: `${data.title} - Game Edukasi ${data.subject} ${data.class} | MAIN Q`,
     description: metaDescription,
     keywords: [data.title, data.subject, data.class, 'game edukasi', 'media pembelajaran', 'kurikulum merdeka'].join(', '),
-    alternates: { canonical: canonicalUrl }, // ✅ Full URL
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       title: data.title,
       description: metaDescription,
       type: 'article',
-      url: canonicalUrl, // ✅ Full URL (bukan relatif)
+      url: canonicalUrl,
       locale: 'id_ID',
       siteName: 'MAIN Q',
     },
@@ -245,33 +244,32 @@ export default async function Page({ params }: { params: { id: string } }) {
   const data = await getGameData(params.id);
   if (!data) notFound();
 
-  // ✅ Main JSON-LD: SoftwareApplication + LearningResource
   const canonicalUrl = `https://mainq.my.id/game/${params.id}`;
   
   const mainJsonLd = {
-    "@context": "https://schema.org", // ✅ Hapus spasi
+    "@context": "https://schema.org",
     "@type": ["SoftwareApplication", "LearningResource"],
     "name": data.title,
     "description": generateMetaDescription(data),
     "applicationCategory": "EducationalGame",
-    "applicationSubCategory": "Educational", // ✅ Tambahkan ini
+    "applicationSubCategory": "Educational",
     "operatingSystem": "Web",
-    "browserRequirements": "Requires JavaScript. Requires HTML5.", // ✅ Tambahkan
+    "browserRequirements": "Requires JavaScript. Requires HTML5.",
     "author": { "@type": "Person", "name": data.authorName },
-    "publisher": { "@type": "Organization", "name": "MAIN Q", "url": "https://mainq.my.id" }, // ✅ Hapus spasi
+    "publisher": { "@type": "Organization", "name": "MAIN Q", "url": "https://mainq.my.id" },
     "learningResourceType": "Educational Game",
     "educationalLevel": data.class,
-    "educationalUse": "InstructionalMaterial", // ✅ Tambahkan
+    "educationalUse": "InstructionalMaterial",
     "about": data.subject,
     "inLanguage": "id",
     "offers": { 
       "@type": "Offer", 
-      "price": "0",           // ✅ String, bukan number
+      "price": "0",
       "priceCurrency": "IDR", 
-      "availability": "https://schema.org/InStock" 
+      "availability": "https://schema.org/InStock"
     },
-    "url": canonicalUrl, // ✅ Full URL, hapus spasi
-    "isAccessibleForFree": true, // ✅ Tambahkan
+    "url": canonicalUrl,
+    "isAccessibleForFree": true,
     "datePublished": data.createdAt || new Date().toISOString(),
     "dateModified": new Date().toISOString(),
   };
@@ -281,7 +279,7 @@ export default async function Page({ params }: { params: { id: string } }) {
 
   return (
     <>
-      {/* ✅ AdSense Script - Hapus spasi di URL */}
+      {/* AdSense Script - NO TRAILING SPACES */}
       <Script
         async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8378725062743955"
@@ -289,43 +287,36 @@ export default async function Page({ params }: { params: { id: string } }) {
         strategy="afterInteractive"
       />
       
-      {/* ✅ JSON-LD 1: Main Schema */}
+      {/* JSON-LD 1: Main Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ 
-          __html: JSON.stringify(mainJsonLd, null, 2) 
+          __html: JSON.stringify(mainJsonLd)
         }} 
       />
       
-      {/* ✅ JSON-LD 2: FAQPage (Rich Results) */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ 
-          __html: JSON.stringify(faqJsonLd, null, 2) 
-        }} 
-      />
+      {/* JSON-LD 2: FAQPage */}
       
-      {/* ✅ JSON-LD 3: BreadcrumbList */}
+      {/* JSON-LD 3: BreadcrumbList */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ 
-          __html: JSON.stringify(breadcrumbJsonLd, null, 2) 
+          __html: JSON.stringify(breadcrumbJsonLd)
         }} 
       />
 
       <main className="container mx-auto px-4 py-6 max-w-4xl">
-        {/* Game Area */}
         <article className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
           <GameClient id={params.id} />
         </article>
         
-        {/* ✅ Auto-Generated SEO Content */}
+        {/* Auto-Generated SEO Content */}
         <div 
           className="mt-10 text-gray-800"
           dangerouslySetInnerHTML={{ __html: generateAutoContent(data) }} 
         />
         
-        {/* Attribution & Trust Signal */}
+        {/* Attribution */}
         <div className="mt-10 pt-6 border-t border-gray-200">
           <div className="flex items-center gap-3 bg-green-50 p-4 rounded-lg">
             <span className="text-2xl">👨‍🏫</span>
