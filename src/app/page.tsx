@@ -113,8 +113,7 @@ export default function Home() {
     if (!firestore) return null;
     return query(
       collection(firestore, 'publishedGames'), 
-      orderBy('uploadDate', 'desc'),
-      limit(100)
+      orderBy('uploadDate', 'desc'), 
     );
   }, [firestore]);
 
