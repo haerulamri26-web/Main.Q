@@ -144,15 +144,6 @@ export default function RootLayout({
           }}
           strategy="afterInteractive"
         />
-
-        {/* Global AdSense Initialization */}
-        <Script
-          id="adsense-init"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(window.adsbygoogle = window.adsbygoogle || []).push({});`,
-          }}
-        />
         
         {/* Preconnect untuk performa */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -204,7 +195,7 @@ export default function RootLayout({
                   &copy; {new Date().getFullYear()} {SITE_NAME}. Dibuat untuk para guru dan siswa.
                 </p>
                 <span itemProp="copyrightHolder" itemScope itemType="https://schema.org/Organization" className="sr-only">
-                  <span itemprop="name">{SITE_NAME}</span>
+                  <span itemProp="name">{SITE_NAME}</span>
                 </span>
               </div>
             </footer>
