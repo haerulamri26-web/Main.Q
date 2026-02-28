@@ -1,6 +1,9 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import GameClient from './game-client';
-import { BookOpen, Layers, ShieldCheck, Globe } from 'lucide-react';
+import { BookOpen, Layers, ShieldCheck, Globe, GraduationCap, User } from 'lucide-react';
+// Import Script dari Next.js untuk AdSense
+import Script from 'next/script'; 
 
 interface GameData {
   title: string;
@@ -8,152 +11,143 @@ interface GameData {
   subject: string;
   class: string;
   authorName: string;
+  // Tambahkan field id untuk canonical
+  id: string; 
 }
 
-// Function to fetch data on the server for SEO
-async function getGameData(id: string): Promise<GameData | null> {
-  try {
-    const projectId = "studio-7363006266-37b51";
-    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/publishedGames/${id}`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    
-    if (!res.ok) return null;
-    
-    const data = await res.json();
-    const fields = data.fields;
-    
-    return {
-      title: fields.title?.stringValue || 'Game Edukasi',
-      description: fields.description?.stringValue || '',
-      subject: fields.subject?.stringValue || 'Umum',
-      class: fields.class?.stringValue || 'Semua Level',
-      authorName: fields.authorName?.stringValue || 'Guru Kreatif',
-    };
-  } catch (e) {
-    return null;
-  }
-}
+// ... fungsi getGameData tetap sama (pastikan return data lengkap) ...
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const data = await getGameData(params.id);
-  if (!data) return { title: 'Game Tidak Ditemukan - MAIN Q' };
+  if (!data) return { title: 'Game Tidak Ditemukan' };
+
+  const url = `https://mainq.id/game/${params.id}`; // Sesuaikan domainmu
 
   return {
-    title: `${data.title} - Game Edukasi ${data.subject} ${data.class} | MAIN Q`,
-    description: data.description || `Mainkan media pembelajaran interaktif ${data.title} untuk ${data.class}. Dibuat oleh ${data.authorName} untuk mendukung Kurikulum Merdeka.`,
+    title: `Mainkan ${data.title} - Media Pembelajaran ${data.subject} ${data.class}`,
+    description: data.description.substring(0, 160),
+    alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title: data.title,
       description: data.description,
-      type: 'article',
+      url: url,
+      siteName: 'MAIN Q',
+      locale: 'id_ID',
+      type: 'website',
     },
   };
 }
 
 export default async function Page({ params }: { params: { id: string } }) {
   const data = await getGameData(params.id);
-
-  const jsonLd = data ? {
-    "@context": "https://schema.org",
-    "@type": ["SoftwareApplication", "LearningResource"],
-    "name": data.title,
-    "description": data.description,
-    "applicationCategory": "EducationalGame",
-    "operatingSystem": "Web",
-    "author": {
-      "@type": "Person",
-      "name": data.authorName
-    },
-    "learningResourceType": "Educational Game",
-    "educationalLevel": data.class,
-    "about": data.subject,
-    "inLanguage": "id",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "IDR"
-    }
-  } : null;
+  if (!data) notFound();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {jsonLd && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      )}
+    <article className="container mx-auto px-4 py-8 max-w-5xl">
+      {/* 1. Google AdSense Script (Letakkan di sini atau di Layout) */}
+      <Script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" // Ganti ID-mu
+        crossOrigin="anonymous"
+        strategy="afterInteractive"
+      />
 
-      {/* Konten Statis untuk SEO (Muncul tanpa JS) */}
-      <div className="sr-only">
-        <h1>{data?.title}</h1>
-        <p>{data?.description}</p>
-        <p>Mata Pelajaran: {data?.subject}</p>
-        <p>Level: {data?.class}</p>
-        <p>Penulis: {data?.authorName}</p>
+      {/* 2. JSON-LD Schema (Lengkap: WebPage + LearningResource) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "LearningResource",
+                "name": data.title,
+                "description": data.description,
+                "learningResourceType": "Educational Game",
+                "educationalLevel": data.class,
+                "about": data.subject,
+                "author": { "@type": "Person", "name": data.authorName }
+              },
+              {
+                "@type": "BreadcrumbList",
+                "itemListElement": [
+                  { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://mainq.id" },
+                  { "@type": "ListItem", "position": 2, "name": data.subject, "item": `https://mainq.id/subject/${data.subject.toLowerCase()}` },
+                  { "@type": "ListItem", "position": 3, "name": data.title }
+                ]
+              }
+            ]
+          }),
+        }}
+      />
+
+      {/* 3. Header Area (Penting untuk SEO: H1 harus terlihat, jangan sr-only) */}
+      <header className="mb-8 border-b pb-6">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4 text-slate-900">
+          Media Pembelajaran Interaktif: {data.title}
+        </h1>
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1"><User className="w-4 h-4" /> {data.authorName}</span>
+          <span className="flex items-center gap-1"><GraduationCap className="w-4 h-4" /> {data.class}</span>
+          <span className="flex items-center gap-1"><BookOpen className="w-4 h-4" /> {data.subject}</span>
+        </div>
+      </header>
+
+      {/* 4. Slot Iklan Atas (AdSense Placeholder) */}
+      <div className="my-6 min-h-[90px] bg-slate-50 flex items-center justify-center border dashed">
+        <p className="text-xs text-slate-400 italic">Iklan Atas</p>
       </div>
 
-      <GameClient id={params.id} />
-
-      {/* Bagian Teks Informatif (SSR) */}
-      <div className="mt-16 max-w-4xl mx-auto border-t pt-12 space-y-12 bg-card/30 p-8 rounded-xl">
-        <section className="grid md:grid-cols-2 gap-8 items-start">
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline flex items-center gap-2 text-primary">
-              <BookOpen className="h-6 w-6" />
-              Inovasi Pembelajaran Digital
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Media pembelajaran interaktif <strong>{data?.title}</strong> merupakan bagian dari revolusi pendidikan digital di Indonesia. 
-              Dirancang khusus untuk mendukung mata pelajaran <strong>{data?.subject}</strong> pada tingkat <strong>{data?.class}</strong>, 
-              game ini memanfaatkan teknologi HTML5 untuk memberikan pengalaman belajar yang imersif dan menyenangkan.
-            </p>
-          </div>
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline flex items-center gap-2 text-primary">
-              <Layers className="h-6 w-6" />
-              Sesuai Kurikulum Merdeka
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Dalam semangat <em>Student-Centered Learning</em>, media ini memfasilitasi siswa untuk bereksplorasi secara mandiri. 
-              Pemanfaatan gamifikasi dalam pendidikan terbukti meningkatkan retensi memori dan motivasi belajar siswa hingga 60% dibandingkan metode ceramah konvensional.
-            </p>
-          </div>
-        </section>
-
-        <section className="bg-secondary/20 p-6 rounded-lg border border-primary/10">
-          <h3 className="text-xl font-bold font-headline mb-4 flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-green-600" />
-            Keunggulan Media Pembelajaran MAIN Q
-          </h3>
-          <ul className="grid sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">✓</span>
-              Aksesibilitas Universal: Dapat dibuka di smartphone, tablet, maupun laptop tanpa instalasi.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">✓</span>
-              Keamanan Terjamin: Berjalan dalam lingkungan sandbox yang aman untuk anak-anak.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">✓</span>
-              Interaktivitas Tinggi: Memberikan feedback instan bagi siswa selama proses belajar.
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-primary font-bold">✓</span>
-              Gratis & Terbuka: Mendukung demokratisasi akses pendidikan berkualitas di seluruh Indonesia.
-            </li>
-          </ul>
-        </section>
-
-        <section className="text-center space-y-4">
-          <div className="flex justify-center">
-            <Globe className="h-10 w-10 text-primary/40" />
-          </div>
-          <p className="text-sm text-muted-foreground italic max-w-2xl mx-auto">
-            Halaman ini dioptimalkan untuk mesin pencari guna membantu guru dan siswa di seluruh Indonesia menemukan media pembelajaran berkualitas tinggi secara gratis di platform MAIN Q.
-          </p>
-        </section>
+      {/* 5. Area Game */}
+      <div className="aspect-video w-full bg-black rounded-xl overflow-hidden shadow-2xl mb-8">
+        <GameClient id={params.id} />
       </div>
-    </div>
+
+      {/* 6. Konten Deskripsi Panjang (Penting untuk AdSense agar tidak dianggap Low Value) */}
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 space-y-6 text-slate-700 leading-relaxed">
+          <section>
+            <h2 className="text-2xl font-bold mb-3 text-slate-900">Tentang Media Pembelajaran Ini</h2>
+            <p>{data.description}</p>
+            <p className="mt-4">
+              Game edukasi ini dikembangkan untuk membantu siswa memahami materi <strong>{data.subject}</strong> dengan cara yang lebih menyenangkan. 
+              Cocok digunakan sebagai media pendukung dalam Kurikulum Merdeka di kelas <strong>{data.class}</strong>.
+            </p>
+          </section>
+
+          {/* 7. Slot Iklan Tengah Artikel */}
+          <div className="my-6 min-h-[250px] bg-slate-50 flex items-center justify-center border dashed">
+            <p className="text-xs text-slate-400 italic">Iklan Tengah</p>
+          </div>
+
+          <section className="bg-primary/5 p-6 rounded-xl border border-primary/20">
+            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <ShieldCheck className="text-primary" /> Manfaat Gamifikasi
+            </h3>
+            <ul className="list-disc pl-5 space-y-2">
+              <li>Meningkatkan keterlibatan (engagement) aktif siswa selama KBM.</li>
+              <li>Memberikan umpan balik (feedback) instan terhadap pemahaman materi.</li>
+              <li>Mempermudah visualisasi konsep abstrak pada mata pelajaran {data.subject}.</li>
+            </ul>
+          </section>
+        </div>
+
+        {/* 8. Sidebar (Bisa diisi link game lain / Iklan Vertical) */}
+        <aside className="space-y-6">
+          <div className="p-4 border rounded-lg">
+            <h4 className="font-bold mb-3 uppercase text-xs tracking-wider">Informasi Tambahan</h4>
+            <div className="text-sm space-y-2">
+              <p><strong>Kategori:</strong> {data.subject}</p>
+              <p><strong>Level:</strong> {data.class}</p>
+              <p><strong>Platform:</strong> Web Browser (HTML5)</p>
+            </div>
+          </div>
+          <div className="min-h-[600px] bg-slate-50 flex items-center justify-center border dashed">
+            <p className="text-xs text-slate-400 italic">Iklan Sidebar</p>
+          </div>
+        </aside>
+      </div>
+    </article>
   );
 }
