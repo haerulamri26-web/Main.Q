@@ -20,6 +20,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AdUnit } from '@/components/AdSense';
 
 // ============================================================================
 // INTERFACES
@@ -127,14 +128,6 @@ export default function GameClient({ id }: { id: string }) {
   useEffect(() => {
     if (gameDocRef) updateDoc(gameDocRef, { views: increment(1) }).catch(() => {});
   }, [gameDocRef]);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
 
   useEffect(() => {
     if (game) {
@@ -257,36 +250,40 @@ export default function GameClient({ id }: { id: string }) {
   }
 
   return (
-    <article className="animate-in fade-in-0 slide-in-from-top-4 duration-500">
+    <article itemScope itemType="https://schema.org/LearningResource">
       {/* ✅ Breadcrumbs - SEO Navigation */}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-primary flex items-center gap-1 transition-colors">
           <Home className="w-3 h-3" /> Beranda
         </Link>
         <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        <span className="font-medium text-foreground truncate">{game.title}</span>
+        <span className="font-medium text-foreground truncate" itemProp="name">{game.title}</span>
       </nav>
 
       {/* ✅ Header Utama */}
       <header className="mb-8 space-y-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-headline">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-headline" itemProp="name">
           {game.title}
         </h1>
         <div className="flex flex-wrap items-center gap-4 text-sm">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-none" itemProp="about">
             {subjectDisplay}
           </Badge>
           <div className="flex items-center gap-1 text-muted-foreground">
             <User className="w-4 h-4" /> 
-            <span>{game.authorName}</span>
+            <span itemProp="author" itemScope itemType="https://schema.org/Person">
+              <span itemProp="name">{game.authorName}</span>
+            </span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <Eye className="w-4 h-4" /> 
-            <span>{game.views} Tayangan</span>
+            <span itemProp="interactionStatistic" itemScope itemType="https://schema.org/InteractionCounter">
+              <span itemProp="userInteractionCount">{game.views}</span> Tayangan
+            </span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <span>
+            <span itemProp="datePublished">
               {game.uploadDate?.toDate && formatDistanceToNow(game.uploadDate.toDate(), { addSuffix: true, locale: idLocale })}
             </span>
           </div>
@@ -302,9 +299,7 @@ export default function GameClient({ id }: { id: string }) {
       </header>
 
       {/* ✅ AdSense Slot: Atas Game */}
-      <div className="w-full min-h-[90px] bg-muted/20 border-y mb-8 flex items-center justify-center text-xs text-muted-foreground">
-        <p className="italic">Ruang Iklan - Responsif</p>
-      </div>
+      <AdUnit slot="1234567890" className="w-full min-h-[90px] bg-muted/20 border-y mb-8 flex items-center justify-center text-xs text-muted-foreground" />
 
       <div className="grid lg:grid-cols-4 gap-8">
         {/* ✅ Main Content Column */}
@@ -420,7 +415,7 @@ export default function GameClient({ id }: { id: string }) {
           </div>
 
           {/* ✅ Deskripsi Materi */}
-          <section className="space-y-4">
+          <section className="space-y-4" itemProp="description">
             <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary" /> 
               Deskripsi Materi
@@ -435,6 +430,9 @@ export default function GameClient({ id }: { id: string }) {
               )}
             </div>
           </section>
+
+          {/* ✅ AdSense Slot: Tengah Konten */}
+          <AdUnit slot="0987654321" format="rectangle" className="w-full min-h-[250px] flex items-center justify-center my-8" />
 
           {/* ✅ Panduan untuk Guru */}
           <section className="space-y-4">
@@ -591,6 +589,9 @@ export default function GameClient({ id }: { id: string }) {
               </Button>
             </CardContent>
           </Card>
+
+          {/* ✅ AdSense Slot: Sidebar (Vertical) */}
+          <AdUnit slot="1122334455" format="vertical" responsive="false" className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-20" />
 
           {/* Game Sejenis */}
           <section className="space-y-4">
