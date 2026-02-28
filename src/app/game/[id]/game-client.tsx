@@ -11,14 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useRef, useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
@@ -35,8 +34,9 @@ interface Game {
   views: number; 
   authorName: string; 
   userId: string;
-  createdAt?: any;
+  uploadDate?: any;
 }
+
 interface Comment { 
   id: string; 
   userId: string; 
@@ -129,14 +129,22 @@ export default function GameClient({ id }: { id: string }) {
   }, [gameDocRef]);
 
   useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
     if (game) {
       const subject = `Laporan Game: ${game.title}`;
       const body = `Saya melaporkan game ini: ${window.location.href}\n\nAlasan:`;
-      setReportUrl(`mailto:admin@mainq.my.id?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      setReportUrl(`mailto:haerulamri26@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     }
   }, [game]);
 
-  // ✅ Inject Client-Side JSON-LD (FAQ) - Fallback jika server-side tidak cukup
+  // ✅ Inject Client-Side JSON-LD (FAQ)
   useEffect(() => {
     if (!game) return;
     
@@ -159,14 +167,16 @@ export default function GameClient({ id }: { id: string }) {
     document.head.appendChild(script);
 
     return () => {
-      document.head.removeChild(script);
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
     };
   }, [game]);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
       iframeContainerRef.current?.requestFullscreen();
-    } else {
+    } else if (document.exitFullscreen) {
       document.exitFullscreen();
     }
   };
@@ -184,15 +194,32 @@ export default function GameClient({ id }: { id: string }) {
 
   const handleCommentSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!firestore || !user || !comment.trim()) return;
+    if (!firestore || !user || !comment.trim() || !game) return;
     setIsSubmitting(true);
     try {
       await addDoc(collection(firestore, 'publishedGames', id, 'comments'), {
-        userId: user.uid, authorName: user.displayName, authorPhotoURL: user.photoURL,
-        text: comment.trim(), createdAt: serverTimestamp(),
+        userId: user.uid,
+        authorName: user.displayName || 'Pengguna Anonim',
+        authorPhotoURL: user.photoURL || null,
+        text: comment.trim(),
+        createdAt: serverTimestamp(),
       });
+
+      // Notify Content Owner
+      if (game.userId !== user.uid) {
+        await addDoc(collection(firestore, 'notifications'), {
+          userId: game.userId,
+          senderName: user.displayName || 'Seseorang',
+          contentTitle: game.title,
+          contentLink: `/game/${id}`,
+          type: 'comment',
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+
       setComment('');
-      toast({ title: "💬 Komentar terkirim!", variant: "default" });
+      toast({ title: "💬 Komentar terkirim!" });
     } catch (err) {
       toast({ title: "❌ Gagal mengirim komentar", variant: "destructive" });
     } finally { 
@@ -224,56 +251,44 @@ export default function GameClient({ id }: { id: string }) {
         <AlertTriangle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
         <h2 className="text-xl font-bold mb-2">Game tidak ditemukan</h2>
         <p className="text-muted-foreground mb-6">Mungkin game sudah dihapus atau link tidak valid.</p>
-        <Button asChild><Link href="/games">← Kembali ke Daftar Game</Link></Button>
+        <Button asChild><Link href="/">← Kembali ke Beranda</Link></Button>
       </div>
     );
   }
 
   return (
-    <article itemscope itemtype="https://schema.org/LearningResource">
+    <article className="animate-in fade-in-0 slide-in-from-top-4 duration-500">
       {/* ✅ Breadcrumbs - SEO Navigation */}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-primary flex items-center gap-1 transition-colors">
           <Home className="w-3 h-3" /> Beranda
         </Link>
         <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        <Link href={`/?level=${game.class}`} className="hover:text-primary transition-colors">
-          {game.class}
-        </Link>
-        <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        <Link href={`/?subject=${game.subject}`} className="hover:text-primary transition-colors">
-          {subjectDisplay}
-        </Link>
-        <ChevronRight className="w-3 h-3 text-muted-foreground" />
-        <span className="font-medium text-foreground truncate" itemprop="name">{game.title}</span>
+        <span className="font-medium text-foreground truncate">{game.title}</span>
       </nav>
 
-      {/* ✅ Header Utama - H1 dengan Schema */}
+      {/* ✅ Header Utama */}
       <header className="mb-8 space-y-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-headline" itemprop="name">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-headline">
           {game.title}
         </h1>
         <div className="flex flex-wrap items-center gap-4 text-sm">
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-none" itemprop="about">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-none">
             {subjectDisplay}
           </Badge>
           <div className="flex items-center gap-1 text-muted-foreground">
             <User className="w-4 h-4" /> 
-            <span itemprop="author" itemtype="https://schema.org/Person" itemscope>
-              <span itemprop="name">{game.authorName}</span>
-            </span>
+            <span>{game.authorName}</span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <Eye className="w-4 h-4" /> 
-            <span itemprop="interactionStatistic" itemtype="https://schema.org/InteractionCounter" itemscope>
-              <span itemprop="userInteractionCount">{game.views}</span> Views
-            </span>
+            <span>{game.views} Tayangan</span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="w-4 h-4" />
-            <time dateTime={game.createdAt?.toDate?.().toISOString()} itemprop="datePublished">
-              {game.createdAt?.toDate && formatDistanceToNow(game.createdAt.toDate(), { addSuffix: true, locale: idLocale })}
-            </time>
+            <span>
+              {game.uploadDate?.toDate && formatDistanceToNow(game.uploadDate.toDate(), { addSuffix: true, locale: idLocale })}
+            </span>
           </div>
           <div className="flex gap-2 ml-auto">
             <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="rounded-full">
@@ -286,15 +301,9 @@ export default function GameClient({ id }: { id: string }) {
         </div>
       </header>
 
-      {/* ✅ AdSense Slot: Atas Game (Responsive) */}
+      {/* ✅ AdSense Slot: Atas Game */}
       <div className="w-full min-h-[90px] bg-muted/20 border-y mb-8 flex items-center justify-center text-xs text-muted-foreground">
-        <ins className="adsbygoogle"
-             style={{ display: 'block' }}
-             data-ad-client="ca-pub-8378725062743955"
-             data-ad-slot="1234567890" 
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        <p className="italic">Ruang Iklan - Responsif</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
@@ -305,27 +314,25 @@ export default function GameClient({ id }: { id: string }) {
           <section 
             ref={iframeContainerRef}
             className="relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800"
-            aria-label={`Game interaktif: ${game.title}`}
           >
             <iframe
               title={game.title}
               srcDoc={game.htmlCode}
               className="w-full h-full border-0"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals allow-top-navigation-by-user-activation"
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock"
               allowFullScreen
               loading="lazy"
             />
             <Button 
               variant="secondary" size="sm" onClick={handleFullscreen}
               className="absolute bottom-4 right-4 bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
-              aria-label={isFullscreen ? "Keluar dari layar penuh" : "Masuk layar penuh"}
             >
               {isFullscreen ? <Shrink className="w-4 h-4 mr-2" /> : <Expand className="w-4 h-4 mr-2" />}
               {isFullscreen ? "Keluar" : "Layar Penuh"}
             </Button>
           </section>
 
-          {/* ✅ Quick Info Cards - Teks SEO Tambahan */}
+          {/* ✅ Quick Info Cards */}
           <div className="grid md:grid-cols-3 gap-4">
             <Card className="border-primary/20">
               <CardContent className="pt-6">
@@ -335,7 +342,7 @@ export default function GameClient({ id }: { id: string }) {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide">Tujuan</p>
-                    <p className="font-semibold text-sm">Pemahaman Konsep {subjectDisplay}</p>
+                    <p className="font-semibold text-sm">Pemahaman {subjectDisplay}</p>
                   </div>
                 </div>
               </CardContent>
@@ -361,14 +368,14 @@ export default function GameClient({ id }: { id: string }) {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide">Format</p>
-                    <p className="font-semibold text-sm">HTML5 Interaktif</p>
+                    <p className="font-semibold text-sm">Web Interaktif</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* ✅ Cara Bermain & Manfaat (Auto-Enriched Content) */}
+          {/* ✅ Cara Bermain & Manfaat */}
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
@@ -379,14 +386,11 @@ export default function GameClient({ id }: { id: string }) {
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground leading-relaxed space-y-3">
                 <ol className="list-decimal list-inside space-y-2">
-                  <li>Klik tombol "Mulai" pada game untuk memulai sesi belajar.</li>
-                  <li>Gunakan <strong>mouse atau sentuhan</strong> untuk menjawab pertanyaan dan menyelesaikan tantangan.</li>
-                  <li>Perhatikan instruksi di setiap level untuk memahami tujuan pembelajaran.</li>
-                  <li>Ulangi permainan untuk memperkuat pemahaman konsep {subjectDisplay.toLowerCase()}.</li>
+                  <li>Klik tombol "Mulai" pada game untuk memulai.</li>
+                  <li>Gunakan <strong>mouse atau sentuhan</strong> untuk berinteraksi.</li>
+                  <li>Selesaikan tantangan untuk mendapatkan skor terbaik.</li>
+                  <li>Ulangi permainan untuk memperdalam pemahaman materi.</li>
                 </ol>
-                <p className="text-xs bg-muted/50 p-3 rounded-lg mt-3">
-                  💡 <strong>Tip:</strong> Mainkan game ini di perangkat dengan layar yang cukup besar untuk pengalaman terbaik.
-                </p>
               </CardContent>
             </Card>
             <Card>
@@ -400,65 +404,39 @@ export default function GameClient({ id }: { id: string }) {
                 <ul className="space-y-2">
                   <li className="flex gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Visualisasi interaktif membantu pemahaman konsep {subjectDisplay} yang abstrak.</span>
+                    <span>Visualisasi interaktif memudahkan pemahaman konsep.</span>
                   </li>
                   <li className="flex gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Pendekatan gamifikasi meningkatkan motivasi dan keterlibatan siswa.</span>
+                    <span>Meningkatkan motivasi belajar siswa lewat gamifikasi.</span>
                   </li>
                   <li className="flex gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Cocok untuk pembelajaran mandiri, tugas rumah, atau aktivitas kelas.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Disusun sesuai prinsip Kurikulum Merdeka untuk jenjang {game.class}.</span>
+                    <span>Mendukung pembelajaran mandiri yang menyenangkan.</span>
                   </li>
                 </ul>
               </CardContent>
             </Card>
           </div>
 
-          {/* ✅ Deskripsi Materi (Dengan Fallback Auto-Enrichment) */}
-          <section className="space-y-4" itemProp="description">
+          {/* ✅ Deskripsi Materi */}
+          <section className="space-y-4">
             <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
               <BookOpen className="w-6 h-6 text-primary" /> 
               Deskripsi Materi
             </h2>
-            <div className="p-6 bg-secondary/30 rounded-xl border prose prose-sm dark:prose-invert max-w-none">
-              {game.description?.trim() ? (
+            <div className="p-6 bg-secondary/30 rounded-xl border">
+              {game.description ? (
                 <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
                   {game.description}
                 </p>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                    <strong>{game.title}</strong> adalah media pembelajaran interaktif untuk mata pelajaran 
-                    <strong> {subjectDisplay}</strong> jenjang <strong>{game.class}</strong>. 
-                    Game ini dirancang untuk membantu siswa memahami konsep melalui pendekatan gamifikasi yang menyenangkan.
-                  </p>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                    Melalui aktivitas interaktif dalam game, siswa dapat melatih kemampuan berpikir kritis, 
-                    pemecahan masalah, dan penguasaan materi {subjectDisplay.toLowerCase()} secara mandiri 
-                    sesuai dengan gaya belajar generasi digital.
-                  </p>
-                </div>
+                <p className="text-slate-500 italic">Belum ada deskripsi untuk game ini.</p>
               )}
             </div>
           </section>
 
-          {/* ✅ AdSense Slot: Dalam Konten (Rectangle) */}
-          <div className="w-full min-h-[250px] bg-muted/10 border-dashed border flex items-center justify-center text-xs text-muted-foreground">
-            <ins className="adsbygoogle"
-                 style={{ display: 'block' }}
-                 data-ad-client="ca-pub-8378725062743955"
-                 data-ad-slot="0987654321"
-                 data-ad-format="rectangle"
-                 data-full-width-responsive="true"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-          </div>
-
-          {/* ✅ Panduan untuk Guru (Nilai Tambah Tinggi untuk AdSense) */}
+          {/* ✅ Panduan untuk Guru */}
           <section className="space-y-4">
             <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
               <GraduationCap className="w-6 h-6 text-primary" /> 
@@ -468,29 +446,11 @@ export default function GameClient({ id }: { id: string }) {
               <CardContent className="pt-6">
                 <div className="space-y-4 text-sm">
                   <div>
-                    <h4 className="font-semibold text-amber-900 mb-2">🎯 Sebelum Menggunakan</h4>
+                    <h4 className="font-semibold text-amber-900 mb-2">🎯 Tips Menggunakan di Kelas:</h4>
                     <ul className="list-disc list-inside space-y-1 text-amber-800">
-                      <li>Pastikan perangkat siswa terhubung internet stabil.</li>
-                      <li>Uji coba game terlebih dahulu untuk memahami alur permainan.</li>
-                      <li>Siapkan pertanyaan pemantik untuk diskusi setelah permainan.</li>
-                    </ul>
-                  </div>
-                  <Separator className="bg-amber-200" />
-                  <div>
-                    <h4 className="font-semibold text-amber-900 mb-2">🚀 Saat Pembelajaran</h4>
-                    <ul className="list-disc list-inside space-y-1 text-amber-800">
-                      <li>Jelaskan tujuan pembelajaran sebelum siswa memulai game.</li>
-                      <li>Biarkan siswa mengeksplorasi secara mandiri, dampingi jika ada kesulitan.</li>
-                      <li>Catat poin-poin penting yang muncul selama permainan untuk bahan refleksi.</li>
-                    </ul>
-                  </div>
-                  <Separator className="bg-amber-200" />
-                  <div>
-                    <h4 className="font-semibold text-amber-900 mb-2">📝 Setelah Permainan</h4>
-                    <ul className="list-disc list-inside space-y-1 text-amber-800">
-                      <li>Adakan diskusi kelas: "Apa yang kalian pelajari dari game ini?"</li>
-                      <li>Hubungkan pengalaman game dengan materi teori di buku pelajaran.</li>
-                      <li>Berikan tugas lanjutan untuk memperkuat pemahaman konsep.</li>
+                      <li>Gunakan game ini sebagai media pemantik diskusi di awal pelajaran.</li>
+                      <li>Berikan tugas eksplorasi mandiri kepada siswa lewat link game.</li>
+                      <li>Lakukan refleksi bersama setelah siswa selesai bermain.</li>
                     </ul>
                   </div>
                 </div>
@@ -498,7 +458,7 @@ export default function GameClient({ id }: { id: string }) {
             </Card>
           </section>
 
-          {/* ✅ FAQ Section (Collapsible - Bagus untuk SEO & UX) */}
+          {/* ✅ FAQ Section */}
           <section className="space-y-4">
             <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
               <HelpCircle className="w-6 h-6 text-primary" /> 
@@ -510,21 +470,21 @@ export default function GameClient({ id }: { id: string }) {
                   key={index}
                   open={openFAQ === item.q}
                   onOpenChange={() => setOpenFAQ(openFAQ === item.q ? null : item.q)}
-                  className="border rounded-lg"
+                  className="border rounded-lg overflow-hidden"
                 >
                   <CollapsibleTrigger asChild>
                     <Button 
                       variant="ghost" 
-                      className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50"
+                      className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50 rounded-none"
                     >
-                      <span>{item.q}</span>
+                      <span className="pr-4">{item.q}</span>
                       {openFAQ === item.q ? 
-                        <ChevronUp className="w-4 h-4 ml-2 flex-shrink-0" /> : 
-                        <ChevronDown className="w-4 h-4 ml-2 flex-shrink-0" />
+                        <ChevronUp className="w-4 h-4 flex-shrink-0" /> : 
+                        <ChevronDown className="w-4 h-4 flex-shrink-0" />
                       }
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="px-4 pb-4 pt-0 text-sm text-muted-foreground">
+                  <CollapsibleContent className="px-4 pb-4 pt-0 text-sm text-muted-foreground animate-in slide-in-from-top-2">
                     {item.a}
                   </CollapsibleContent>
                 </Collapsible>
@@ -532,10 +492,10 @@ export default function GameClient({ id }: { id: string }) {
             </div>
           </section>
 
-          {/* ✅ Diskusi & Komentar (Engagement Signal) */}
+          {/* ✅ Diskusi & Komentar */}
           <section className="pt-10 border-t" id="komentar">
             <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
-              <Gamepad2 className="w-6 h-6 text-primary" /> 
+              <Layers className="w-6 h-6 text-primary" /> 
               Diskusi & Komentar ({comments?.length || 0})
             </h2>
             
@@ -549,14 +509,11 @@ export default function GameClient({ id }: { id: string }) {
                   <Textarea 
                     value={comment} 
                     onChange={e => setComment(e.target.value)} 
-                    placeholder="Bagikan pengalaman atau masukan Anda tentang game ini..." 
+                    placeholder="Bagikan masukan atau pengalaman Anda..." 
                     rows={3}
                     className="resize-none"
                   />
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" type="button" onClick={() => setComment('')}>
-                      Batal
-                    </Button>
+                  <div className="flex justify-end">
                     <Button disabled={isSubmitting || !comment.trim()} size="sm">
                       {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />} 
                       Kirim Komentar
@@ -565,10 +522,9 @@ export default function GameClient({ id }: { id: string }) {
                 </div>
               </form>
             ) : (
-              <Card className="mb-10">
-                <CardContent className="pt-6 text-center">
-                  <User className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-muted-foreground mb-4">Masuk untuk ikut berdiskusi dan berbagi pengalaman</p>
+              <Card className="mb-10 text-center py-8">
+                <CardContent className="space-y-4">
+                  <p className="text-muted-foreground">Ingin ikut berdiskusi? Masuk ke akun Anda.</p>
                   <Button asChild variant="outline">
                     <Link href="/login">Login Sekarang</Link>
                   </Button>
@@ -576,18 +532,9 @@ export default function GameClient({ id }: { id: string }) {
               </Card>
             )}
             
-            <div className="space-y-4">
+            <div className="space-y-6">
               {isLoadingComments ? (
-                Array(3).fill(0).map((_, i) => (
-                  <div key={i} className="flex gap-4 p-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="flex-1 space-y-2">
-                      <Skeleton className="h-4 w-1/4" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                    </div>
-                  </div>
-                ))
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
               ) : comments?.length ? (
                 comments.map(c => (
                   <div key={c.id} className="flex gap-4 p-4 bg-muted/20 rounded-xl">
@@ -602,12 +549,12 @@ export default function GameClient({ id }: { id: string }) {
                           {c.createdAt?.toDate && formatDistanceToNow(c.createdAt.toDate(), { addSuffix: true, locale: idLocale })}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{c.text}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{c.text}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-8">Belum ada komentar. Jadilah yang pertama berbagi!</p>
+                <p className="text-center text-muted-foreground py-8">Belum ada komentar.</p>
               )}
             </div>
           </section>
@@ -620,7 +567,7 @@ export default function GameClient({ id }: { id: string }) {
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <Info className="w-4 h-4" /> Informasi Game
+                <Info className="w-4 h-4" /> Informasi Tambahan
               </CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-3">
@@ -631,10 +578,6 @@ export default function GameClient({ id }: { id: string }) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Jenjang:</span>
                 <span className="font-semibold">{game.class}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Format:</span>
-                <span className="font-semibold">HTML5 / Web</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Bahasa:</span>
@@ -648,17 +591,6 @@ export default function GameClient({ id }: { id: string }) {
               </Button>
             </CardContent>
           </Card>
-
-          {/* ✅ AdSense Slot: Sidebar (Vertical) */}
-          <div className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-20">
-            <ins className="adsbygoogle"
-                 style={{ display: 'block' }}
-                 data-ad-client="ca-pub-8378725062743955"
-                 data-ad-slot="1122334455"
-                 data-ad-format="vertical"
-                 data-full-width-responsive="false"></ins>
-            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-          </div>
 
           {/* Game Sejenis */}
           <section className="space-y-4">
@@ -677,18 +609,13 @@ export default function GameClient({ id }: { id: string }) {
                     className="block p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-all group"
                   >
                     <p className="text-sm font-medium group-hover:text-primary line-clamp-2">{rec.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{rec.class} • {rec.views} Views</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{rec.class} • {rec.views} Tayangan</p>
                   </Link>
                 ))
               ) : (
                 <p className="text-xs text-muted-foreground">Belum ada game sejenis.</p>
               )}
             </div>
-            <Button variant="ghost" size="sm" className="w-full text-primary" asChild>
-              <Link href={`/?subject=${game.subject}`}>
-                Lihat semua game {subjectDisplay} →
-              </Link>
-            </Button>
           </section>
 
           {/* Popular Games */}
@@ -700,18 +627,18 @@ export default function GameClient({ id }: { id: string }) {
             <div className="space-y-3">
               {isLoadingPopular ? (
                 Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
-              ) : popularGames?.slice(0, 3).map(pop => (
+              ) : popularGames?.map(pop => (
                 <Link 
                   key={pop.id} 
                   href={`/game/${pop.id}`} 
                   className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
-                  <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden">
-                    <div className="w-full h-full opacity-50" style={{ backgroundImage: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)` }} />
+                  <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate group-hover:text-primary">{pop.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{pop.views} Views</p>
+                    <p className="text-xs font-medium truncate group-hover:text-primary">{pop.title}</p>
+                    <p className="text-[10px] text-muted-foreground">{pop.views} Tayangan</p>
                   </div>
                 </Link>
               ))}
@@ -719,27 +646,6 @@ export default function GameClient({ id }: { id: string }) {
           </section>
         </aside>
       </div>
-
-      {/* ✅ Final CTA Section */}
-      <section className="mt-20 pt-10 border-t text-center">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <h3 className="text-xl font-bold">🎮 Jelajahi Lebih Banyak Game Edukasi</h3>
-          <p className="text-muted-foreground">
-            Temukan ratusan media pembelajaran interaktif lainnya untuk berbagai mata pelajaran dan jenjang.
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Button asChild variant="outline">
-              <Link href="/games">Lihat Semua Game</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/?subject=matematika">Game Matematika</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="/?subject=agama">Game Agama</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
     </article>
   );
 }
