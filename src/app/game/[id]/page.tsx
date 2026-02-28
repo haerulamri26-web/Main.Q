@@ -100,7 +100,7 @@ function generateAutoContent(data: GameData): string {
         </div>
       </article>
 
-      <!-- FAQ Section (HTML only for users, JSON-LD separate for Google) -->
+      <!-- ✅ FAQ Section - HTML ONLY (no schema markup, JSON-LD terpisah) -->
       <article>
         <h2 class="text-2xl font-bold text-gray-900 mb-4">❓ Pertanyaan Umum</h2>
         <div class="space-y-4">
