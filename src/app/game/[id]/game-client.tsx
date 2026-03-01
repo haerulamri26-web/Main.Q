@@ -5,7 +5,7 @@ import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, 
 import { 
   Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, Shrink, 
   Gamepad2, Flame, ChevronRight, Home, BookOpen, Layers, Info, HelpCircle, Trophy, Lightbulb,
-  GraduationCap, Clock, Target, CheckCircle, ChevronDown, ChevronUp
+  GraduationCap, Clock, Target, CheckCircle, ChevronDown, ChevronUp, Monitor, Maximize2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AdUnit } from '@/components/AdSense';
+import { cn } from '@/lib/utils';
 
 // ============================================================================
 // INTERFACES
@@ -109,6 +110,7 @@ export default function GameClient({ id }: { id: string }) {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTheatreMode, setIsTheatreMode] = useState(false);
   const [openFAQ, setOpenFAQ] = useState<string | null>(null);
 
   // Firestore Queries
@@ -169,10 +171,18 @@ export default function GameClient({ id }: { id: string }) {
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
       iframeContainerRef.current?.requestFullscreen();
-    } else if (document.exitFullscreen) {
+      setIsFullscreen(true);
+    } else {
       document.exitFullscreen();
+      setIsFullscreen(false);
     }
   };
+
+  useEffect(() => {
+    const handleFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -250,22 +260,22 @@ export default function GameClient({ id }: { id: string }) {
   }
 
   return (
-    <article itemScope itemType="https://schema.org/LearningResource">
+    <article itemScope itemType="https://schema.org/LearningResource" className="w-full">
       {/* ✅ Breadcrumbs - SEO Navigation */}
-      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-primary flex items-center gap-1 transition-colors">
+      <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 overflow-hidden" aria-label="Breadcrumb">
+        <Link href="/" className="hover:text-primary flex items-center gap-1 transition-colors flex-shrink-0">
           <Home className="w-3 h-3" /> Beranda
         </Link>
-        <ChevronRight className="w-3 h-3 text-muted-foreground" />
+        <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
         <span className="font-medium text-foreground truncate" itemProp="name">{game.title}</span>
       </nav>
 
       {/* ✅ Header Utama */}
       <header className="mb-8 space-y-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight font-headline" itemProp="name">
+        <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight font-headline leading-tight" itemProp="name">
           {game.title}
         </h1>
-        <div className="flex flex-wrap items-center gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-y-3 gap-x-4 text-sm">
           <Badge variant="secondary" className="bg-primary/10 text-primary border-none" itemProp="about">
             {subjectDisplay}
           </Badge>
@@ -287,8 +297,8 @@ export default function GameClient({ id }: { id: string }) {
               {game.uploadDate?.toDate && formatDistanceToNow(game.uploadDate.toDate(), { addSuffix: true, locale: idLocale })}
             </span>
           </div>
-          <div className="flex gap-2 ml-auto">
-            <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="rounded-full">
+          <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+            <Button variant="outline" size="sm" onClick={handleShareWhatsApp} className="rounded-full flex-1 sm:flex-none">
               <WhatsAppIcon /> Bagikan
             </Button>
             <Button variant="outline" size="sm" onClick={handleCopyLink} className="rounded-full" title="Salin tautan">
@@ -301,14 +311,24 @@ export default function GameClient({ id }: { id: string }) {
       {/* ✅ AdSense Slot: Atas Game */}
       <AdUnit slot="1234567890" className="w-full min-h-[90px] bg-muted/20 border-y mb-8 flex items-center justify-center text-xs text-muted-foreground" />
 
-      <div className="grid lg:grid-cols-4 gap-8">
+      {/* Main Layout Grid */}
+      <div className={cn(
+        "grid gap-8 transition-all duration-500",
+        isTheatreMode ? "grid-cols-1" : "lg:grid-cols-4"
+      )}>
         {/* ✅ Main Content Column */}
-        <div className="lg:col-span-3 space-y-10">
+        <div className={cn(
+          "space-y-10",
+          !isTheatreMode && "lg:col-span-3"
+        )}>
           
           {/* 🎮 Game Container */}
           <section 
             ref={iframeContainerRef}
-            className="relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800"
+            className={cn(
+              "relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-2xl transition-all duration-500",
+              isTheatreMode ? "border-0 shadow-none" : "border-4 border-white dark:border-slate-800"
+            )}
           >
             <iframe
               title={game.title}
@@ -318,181 +338,211 @@ export default function GameClient({ id }: { id: string }) {
               allowFullScreen
               loading="lazy"
             />
-            <Button 
-              variant="secondary" size="sm" onClick={handleFullscreen}
-              className="absolute bottom-4 right-4 bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
-            >
-              {isFullscreen ? <Shrink className="w-4 h-4 mr-2" /> : <Expand className="w-4 h-4 mr-2" />}
-              {isFullscreen ? "Keluar" : "Layar Penuh"}
-            </Button>
-          </section>
-
-          {/* ✅ Quick Info Cards */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card className="border-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Target className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Tujuan</p>
-                    <p className="font-semibold text-sm">Pemahaman {subjectDisplay}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <GraduationCap className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Jenjang</p>
-                    <p className="font-semibold text-sm">{game.class}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Gamepad2 className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Format</p>
-                    <p className="font-semibold text-sm">Web Interaktif</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ✅ Cara Bermain & Manfaat */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-primary" /> 
-                  Cara Bermain
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground leading-relaxed space-y-3">
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>Klik tombol "Mulai" pada game untuk memulai.</li>
-                  <li>Gunakan <strong>mouse atau sentuhan</strong> untuk berinteraksi.</li>
-                  <li>Selesaikan tantangan untuk mendapatkan skor terbaik.</li>
-                  <li>Ulangi permainan untuk memperdalam pemahaman materi.</li>
-                </ol>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-orange-500" /> 
-                  Manfaat Belajar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground leading-relaxed space-y-3">
-                <ul className="space-y-2">
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Visualisasi interaktif memudahkan pemahaman konsep.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Meningkatkan motivasi belajar siswa lewat gamifikasi.</span>
-                  </li>
-                  <li className="flex gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>Mendukung pembelajaran mandiri yang menyenangkan.</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ✅ Deskripsi Materi */}
-          <section className="space-y-4" itemProp="description">
-            <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
-              <BookOpen className="w-6 h-6 text-primary" /> 
-              Deskripsi Materi
-            </h2>
-            <div className="p-6 bg-secondary/30 rounded-xl border">
-              {game.description ? (
-                <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {game.description}
-                </p>
-              ) : (
-                <p className="text-slate-500 italic">Belum ada deskripsi untuk game ini.</p>
-              )}
+            <div className="absolute bottom-4 right-4 flex gap-2">
+              <Button 
+                variant="secondary" size="sm" onClick={() => setIsTheatreMode(!isTheatreMode)}
+                className="bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all hidden md:flex"
+              >
+                <Monitor className="w-4 h-4 mr-2" />
+                {isTheatreMode ? "Mode Standar" : "Mode Teater"}
+              </Button>
+              <Button 
+                variant="secondary" size="sm" onClick={handleFullscreen}
+                className="bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
+              >
+                {isFullscreen ? <Shrink className="w-4 h-4 mr-2" /> : <Maximize2 className="w-4 h-4 mr-2" />}
+                {isFullscreen ? "Keluar" : "Layar Penuh"}
+              </Button>
             </div>
           </section>
 
-          {/* ✅ AdSense Slot: Tengah Konten */}
-          <AdUnit slot="0987654321" format="rectangle" className="w-full min-h-[250px] flex items-center justify-center my-8" />
+          {/* Quick Info & FAQ */}
+          <div className={cn(
+            "grid gap-8",
+            isTheatreMode ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"
+          )}>
+            <div className={cn(isTheatreMode ? "lg:col-span-2 space-y-10" : "space-y-10")}>
+              {/* Quick Info Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="border-primary/20">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Target className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Tujuan</p>
+                        <p className="font-semibold text-sm">Pemahaman {subjectDisplay}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/20">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <GraduationCap className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Jenjang</p>
+                        <p className="font-semibold text-sm">{game.class}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-primary/20">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Gamepad2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Format</p>
+                        <p className="font-semibold text-sm">Web Interaktif</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-          {/* ✅ Panduan untuk Guru */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
-              <GraduationCap className="w-6 h-6 text-primary" /> 
-              Panduan untuk Guru
-            </h2>
-            <Card className="bg-amber-50/50 border-amber-200">
-              <CardContent className="pt-6">
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <h4 className="font-semibold text-amber-900 mb-2">🎯 Tips Menggunakan di Kelas:</h4>
-                    <ul className="list-disc list-inside space-y-1 text-amber-800">
-                      <li>Gunakan game ini sebagai media pemantik diskusi di awal pelajaran.</li>
-                      <li>Berikan tugas eksplorasi mandiri kepada siswa lewat link game.</li>
-                      <li>Lakukan refleksi bersama setelah siswa selesai bermain.</li>
+              {/* Cara Bermain & Manfaat */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <HelpCircle className="w-5 h-5 text-primary" /> 
+                      Cara Bermain
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground leading-relaxed space-y-3">
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Klik tombol "Mulai" pada game untuk memulai.</li>
+                      <li>Gunakan <strong>mouse atau sentuhan</strong> untuk berinteraksi.</li>
+                      <li>Selesaikan tantangan untuk mendapatkan skor terbaik.</li>
+                      <li>Ulangi permainan untuk memperdalam pemahaman materi.</li>
+                    </ol>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Lightbulb className="w-5 h-5 text-orange-500" /> 
+                      Manfaat Belajar
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-muted-foreground leading-relaxed space-y-3">
+                    <ul className="space-y-2">
+                      <li className="flex gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>Visualisasi interaktif memudahkan pemahaman konsep.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>Meningkatkan motivasi belajar siswa lewat gamifikasi.</span>
+                      </li>
+                      <li className="flex gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span>Mendukung pembelajaran mandiri yang menyenangkan.</span>
+                      </li>
                     </ul>
-                  </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Deskripsi Materi */}
+              <section className="space-y-4" itemProp="description">
+                <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
+                  <BookOpen className="w-6 h-6 text-primary" /> 
+                  Deskripsi Materi
+                </h2>
+                <div className="p-6 bg-secondary/30 rounded-xl border">
+                  {game.description ? (
+                    <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {game.description}
+                    </p>
+                  ) : (
+                    <p className="text-slate-500 italic">Belum ada deskripsi untuk game ini.</p>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </section>
+              </section>
 
-          {/* ✅ FAQ Section */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold font-headline flex items-center gap-2">
-              <HelpCircle className="w-6 h-6 text-primary" /> 
-              Pertanyaan Umum
-            </h2>
-            <div className="space-y-2">
-              {faqItems.map((item, index) => (
-                <Collapsible 
-                  key={index}
-                  open={openFAQ === item.q}
-                  onOpenChange={() => setOpenFAQ(openFAQ === item.q ? null : item.q)}
-                  className="border rounded-lg overflow-hidden"
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50 rounded-none"
+              {/* AdSense Slot: Tengah Konten */}
+              <AdUnit slot="0987654321" format="rectangle" className="w-full min-h-[250px] flex items-center justify-center my-8" />
+
+              {/* Panduan untuk Guru */}
+              <section className="space-y-4">
+                <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
+                  <GraduationCap className="w-6 h-6 text-primary" /> 
+                  Panduan untuk Guru
+                </h2>
+                <Card className="bg-amber-50/50 border-amber-200">
+                  <CardContent className="pt-6">
+                    <div className="space-y-4 text-sm">
+                      <div>
+                        <h4 className="font-semibold text-amber-900 mb-2">🎯 Tips Menggunakan di Kelas:</h4>
+                        <ul className="list-disc list-inside space-y-1 text-amber-800">
+                          <li>Gunakan game ini sebagai media pemantik diskusi di awal pelajaran.</li>
+                          <li>Berikan tugas eksplorasi mandiri kepada siswa lewat link game.</li>
+                          <li>Lakukan refleksi bersama setelah siswa selesai bermain.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+
+              {/* FAQ Section */}
+              <section className="space-y-4">
+                <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
+                  <HelpCircle className="w-6 h-6 text-primary" /> 
+                  Pertanyaan Umum
+                </h2>
+                <div className="space-y-2">
+                  {faqItems.map((item, index) => (
+                    <Collapsible 
+                      key={index}
+                      open={openFAQ === item.q}
+                      onOpenChange={() => setOpenFAQ(openFAQ === item.q ? null : item.q)}
+                      className="border rounded-lg overflow-hidden"
                     >
-                      <span className="pr-4">{item.q}</span>
-                      {openFAQ === item.q ? 
-                        <ChevronUp className="w-4 h-4 flex-shrink-0" /> : 
-                        <ChevronDown className="w-4 h-4 flex-shrink-0" />
-                      }
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="px-4 pb-4 pt-0 text-sm text-muted-foreground animate-in slide-in-from-top-2">
-                    {item.a}
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
+                      <CollapsibleTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50 rounded-none"
+                        >
+                          <span className="pr-4">{item.q}</span>
+                          {openFAQ === item.q ? 
+                            <ChevronUp className="w-4 h-4 flex-shrink-0" /> : 
+                            <ChevronDown className="w-4 h-4 flex-shrink-0" />
+                          }
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="px-4 pb-4 pt-0 text-sm text-muted-foreground animate-in slide-in-from-top-2">
+                        {item.a}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+                </div>
+              </section>
             </div>
-          </section>
 
-          {/* ✅ Diskusi & Komentar */}
+            {/* Side content when in theatre mode */}
+            <div className={cn(isTheatreMode ? "space-y-8" : "hidden")}>
+               <GameSidebarContent 
+                  game={game} 
+                  subjectDisplay={subjectDisplay} 
+                  reportUrl={reportUrl}
+                  isLoadingRecommended={isLoadingRecommended}
+                  isLoadingPopular={isLoadingPopular}
+                  filteredRecommended={filteredRecommended}
+                  popularGames={popularGames}
+               />
+            </div>
+          </div>
+
+          {/* Diskusi & Komentar */}
           <section className="pt-10 border-t" id="komentar">
-            <h2 className="text-2xl font-bold font-headline mb-8 flex items-center gap-2">
+            <h2 className="text-xl md:text-2xl font-bold font-headline mb-8 flex items-center gap-2">
               <Layers className="w-6 h-6 text-primary" /> 
               Diskusi & Komentar ({comments?.length || 0})
             </h2>
@@ -558,95 +608,123 @@ export default function GameClient({ id }: { id: string }) {
           </section>
         </div>
 
-        {/* ✅ Sidebar Column */}
-        <aside className="space-y-8">
-          
-          {/* Info Card */}
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Info className="w-4 h-4" /> Informasi Tambahan
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-3">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subjek:</span>
-                <span className="font-semibold">{subjectDisplay}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Jenjang:</span>
-                <span className="font-semibold">{game.class}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Bahasa:</span>
-                <span className="font-semibold">Indonesia</span>
-              </div>
-              <Separator />
-              <Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 justify-start" asChild>
-                <a href={reportUrl}>
-                  <AlertTriangle className="w-3 h-3 mr-2" /> Laporkan Konten
-                </a>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* ✅ AdSense Slot: Sidebar (Vertical) */}
-          <AdUnit slot="1122334455" format="vertical" responsive="false" className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-20" />
-
-          {/* Game Sejenis */}
-          <section className="space-y-4">
-            <h3 className="font-bold flex items-center gap-2">
-              <Flame className="w-5 h-5 text-orange-500" /> 
-              Game Sejenis
-            </h3>
-            <div className="space-y-3">
-              {isLoadingRecommended ? (
-                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
-              ) : filteredRecommended.length ? (
-                filteredRecommended.map(rec => (
-                  <Link 
-                    key={rec.id} 
-                    href={`/game/${rec.id}`} 
-                    className="block p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-all group"
-                  >
-                    <p className="text-sm font-medium group-hover:text-primary line-clamp-2">{rec.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">{rec.class} • {rec.views} Tayangan</p>
-                  </Link>
-                ))
-              ) : (
-                <p className="text-xs text-muted-foreground">Belum ada game sejenis.</p>
-              )}
-            </div>
-          </section>
-
-          {/* Popular Games */}
-          <section className="space-y-4">
-            <h3 className="font-bold flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-yellow-500" /> 
-              Paling Populer
-            </h3>
-            <div className="space-y-3">
-              {isLoadingPopular ? (
-                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
-              ) : popularGames?.map(pop => (
-                <Link 
-                  key={pop.id} 
-                  href={`/game/${pop.id}`} 
-                  className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
-                >
-                  <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate group-hover:text-primary">{pop.title}</p>
-                    <p className="text-[10px] text-muted-foreground">{pop.views} Tayangan</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        </aside>
+        {/* ✅ Sidebar Column (Standard Mode) */}
+        {!isTheatreMode && (
+          <aside className="space-y-8">
+            <GameSidebarContent 
+              game={game} 
+              subjectDisplay={subjectDisplay} 
+              reportUrl={reportUrl}
+              isLoadingRecommended={isLoadingRecommended}
+              isLoadingPopular={isLoadingPopular}
+              filteredRecommended={filteredRecommended}
+              popularGames={popularGames}
+            />
+          </aside>
+        )}
       </div>
     </article>
+  );
+}
+
+// ============================================================================
+// HELPER COMPONENT: Sidebar Content
+// ============================================================================
+function GameSidebarContent({ 
+  game, 
+  subjectDisplay, 
+  reportUrl, 
+  isLoadingRecommended, 
+  isLoadingPopular, 
+  filteredRecommended, 
+  popularGames 
+}: any) {
+  return (
+    <div className="space-y-8">
+      {/* Info Card */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2 font-headline">
+            <Info className="w-4 h-4 text-primary" /> Informasi Tambahan
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-xs space-y-3">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Subjek:</span>
+            <span className="font-semibold">{subjectDisplay}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Jenjang:</span>
+            <span className="font-semibold">{game.class}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Bahasa:</span>
+            <span className="font-semibold">Indonesia</span>
+          </div>
+          <Separator />
+          <Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 justify-start h-auto py-2" asChild>
+            <a href={reportUrl}>
+              <AlertTriangle className="w-3 h-3 mr-2" /> Laporkan Konten
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ✅ AdSense Slot: Sidebar (Vertical) */}
+      <AdUnit slot="1122334455" format="vertical" responsive="false" className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-24" />
+
+      {/* Game Sejenis */}
+      <section className="space-y-4 pt-4">
+        <h3 className="font-bold flex items-center gap-2 font-headline text-lg">
+          <Flame className="w-5 h-5 text-orange-500" /> 
+          Game Sejenis
+        </h3>
+        <div className="space-y-3">
+          {isLoadingRecommended ? (
+            Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+          ) : filteredRecommended.length ? (
+            filteredRecommended.map((rec: any) => (
+              <Link 
+                key={rec.id} 
+                href={`/game/${rec.id}`} 
+                className="block p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-all group"
+              >
+                <p className="text-sm font-medium group-hover:text-primary line-clamp-2 leading-snug">{rec.title}</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5">{rec.class} • {rec.views} Tayangan</p>
+              </Link>
+            ))
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada game sejenis.</p>
+          )}
+        </div>
+      </section>
+
+      {/* Popular Games */}
+      <section className="space-y-4">
+        <h3 className="font-bold flex items-center gap-2 font-headline text-lg">
+          <Trophy className="w-5 h-5 text-yellow-500" /> 
+          Paling Populer
+        </h3>
+        <div className="space-y-3">
+          {isLoadingPopular ? (
+            Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
+          ) : popularGames?.map((pop: any) => (
+            <Link 
+              key={pop.id} 
+              href={`/game/${pop.id}`} 
+              className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+            >
+              <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium truncate group-hover:text-primary">{pop.title}</p>
+                <p className="text-[10px] text-muted-foreground mt-1">{pop.views} Tayangan</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }

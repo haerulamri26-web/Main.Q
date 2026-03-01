@@ -51,7 +51,6 @@ function generateMetaDescription(data: GameData): string {
 function generateAutoContent(data: GameData): string {
   const subjectReadable = data.subject.charAt(0).toUpperCase() + data.subject.slice(1).toLowerCase();
   
-  // Ambil tahun secara dinamis
   const uploadYear = data.createdAt 
     ? new Date(data.createdAt).getFullYear().toString()
     : new Date().getFullYear().toString();
@@ -259,10 +258,8 @@ export default async function Page({ params }: { params: { id: string } }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(generateBreadcrumbJsonLd(data)) }}
       />
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
-        <article className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-          <GameClient id={params.id} />
-        </article>
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
+        <GameClient id={params.id} />
         
         <div 
           className="mt-10 text-gray-800"
