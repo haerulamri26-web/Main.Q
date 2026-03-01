@@ -11,43 +11,51 @@ import {
   Loader2, Undo, Redo, Bold, Italic, Underline, Strikethrough,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
   Link as LinkIcon, Type, ChevronLeft, FileText, Settings, Hash,
-  Youtube, Gamepad2, Image as ImageIcon, Quote, Wand2
+  Youtube, Gamepad2, Image as ImageIcon, Quote, Wand2, Eraser
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
-// MARKDOWN PARSER - Convert Markdown to HTML
+// MARKDOWN PARSER - Convert Markdown to HTML (Improved)
 // ============================================================================
 function convertMarkdownToHtml(text: string): string {
   if (!text) return '';
   
   let html = text;
   
-  // 1. Code blocks (```code```)
-  html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>$1</code></pre>');
+  // 1. Protect code blocks first (prevent other conversions inside code)
+  const codeBlocks: string[] = [];
+  html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+    codeBlocks.push(code);
+    return `%%CODEBLOCK${codeBlocks.length - 1}%%`;
+  });
   
-  // 2. Inline code (`code`)
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+  // 2. Protect inline code
+  const inlineCodes: string[] = [];
+  html = html.replace(/`([^`]+)`/g, (match, code) => {
+    inlineCodes.push(code);
+    return `%%INLINECODE${inlineCodes.length - 1}%%`;
+  });
   
-  // 3. Bold (**text** or __text__)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-  
-  // 4. Italic (*text* or _text_)
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-  
-  // 5. Strikethrough (~~text~~)
-  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-  
-  // 6. Headings (# to ######)
+  // 3. Headers (must be before other conversions)
   html = html.replace(/^###### (.+)$/gm, '<h6 class="text-sm font-bold mb-2">$1</h6>');
   html = html.replace(/^##### (.+)$/gm, '<h5 class="text-base font-bold mb-2">$1</h5>');
   html = html.replace(/^#### (.+)$/gm, '<h4 class="text-lg font-bold mb-3">$1</h4>');
   html = html.replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold mb-3">$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mb-4">$1</h2>');
   html = html.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold mb-4">$1</h1>');
+  
+  // 4. Bold (**text** or __text__)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  
+  // 5. Italic (*text* or _text_)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+  // 6. Strikethrough (~~text~~)
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
   
   // 7. Links ([text](url))
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>');
@@ -57,26 +65,52 @@ function convertMarkdownToHtml(text: string): string {
   
   // 9. Unordered lists (- or *)
   html = html.replace(/^[\-\*] (.+)$/gm, '<li class="ml-4">$1</li>');
-  html = html.replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc list-inside my-4">$&</ul>');
   
   // 10. Ordered lists (1. 2. 3.)
   html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>');
-  html = html.replace(/(<li.*<\/li>\n?)+/g, '<ol class="list-decimal list-inside my-4">$&</ol>');
   
-  // 11. Blockquotes (> text)
+  // 11. Wrap consecutive <li> in <ul> or <ol>
+  html = html.replace(/(<li class="ml-4">.*<\/li>\n?)+/g, (match) => {
+    if (match.includes('<li class="ml-4">')) {
+      return `<ul class="list-disc list-inside my-4">${match}</ul>`;
+    }
+    return match;
+  });
+  
+  // 12. Blockquotes (> text)
   html = html.replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-primary bg-muted/30 p-4 my-4 rounded-r-lg">$1</blockquote>');
   
-  // 12. Horizontal rules (--- or ***)
+  // 13. Horizontal rules (--- or ***)
   html = html.replace(/^[\-\*]{3,}$/gm, '<hr class="my-6 border-t" />');
   
-  // 13. Line breaks (double newline to <p>)
-  html = html.replace(/\n\n/g, '</p><p class="mb-4">');
-  html = `<p class="mb-4">${html}</p>`;
+  // 14. Restore inline code
+  html = html.replace(/%%INLINECODE(\d+)%%/g, (match, index) => {
+    return `<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">${inlineCodes[parseInt(index)]}</code>`;
+  });
   
-  // Clean up empty paragraphs
+  // 15. Restore code blocks
+  html = html.replace(/%%CODEBLOCK(\d+)%%/g, (match, index) => {
+    return `<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${codeBlocks[parseInt(index)]}</code></pre>`;
+  });
+  
+  // 16. Convert double newlines to paragraphs
+  const paragraphs = html.split(/\n\n+/);
+  html = paragraphs.map(p => {
+    p = p.trim();
+    if (!p) return '';
+    // Don't wrap if already a block element
+    if (p.match(/^<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|section|article)/)) {
+      return p;
+    }
+    // Replace single newlines with <br>
+    p = p.replace(/\n/g, '<br>');
+    return `<p class="mb-4">${p}</p>`;
+  }).join('');
+  
+  // 17. Clean up empty paragraphs
   html = html.replace(/<p class="mb-4"><\/p>/g, '');
-  html = html.replace(/<p class="mb-4">(<h[1-6]|<ul|<ol|<blockquote|<pre)/g, '$1');
-  html = html.replace(/(<\/h[1-6]|<\/ul>|<\/ol>|<\/blockquote>|<\/pre>)<\/p>/g, '$1');
+  html = html.replace(/<p class="mb-4">(<h[1-6]|<ul|<ol|<blockquote|<pre|<hr)/g, '$1');
+  html = html.replace(/(<\/h[1-6]|<\/ul>|<\/ol>|<\/blockquote>|<\/pre>|<hr>)<\/p>/g, '$1');
   
   return html;
 }
@@ -88,7 +122,7 @@ function cleanAIFormatting(text: string): string {
   if (!text) return '';
   
   // Remove common AI prefixes
-  text = text.replace(/^(Tentu|Berikut|Ini|Here|This is)[\s\S]*?[:\-]\s*/i, '');
+  text = text.replace(/^(Tentu|Berikut|Ini|Here|This is|Sure|Of course)[\s\S]*?[:\-]\s*/i, '');
   
   // Remove excessive newlines
   text = text.replace(/\n{3,}/g, '\n\n');
@@ -97,6 +131,16 @@ function cleanAIFormatting(text: string): string {
   text = text.trim();
   
   return text;
+}
+
+// ============================================================================
+// HELPER: Get plain text from HTML
+// ============================================================================
+function htmlToPlainText(html: string): string {
+  if (typeof window === 'undefined') return '';
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  return temp.innerText;
 }
 
 export default function NewArticlePage() {
@@ -255,7 +299,7 @@ export default function NewArticlePage() {
     setShowLinkModal(true);
   };
 
-  // ✅ CONVERT MARKDOWN TO HTML (Paste Handler)
+  // ✅ CONVERT MARKDOWN TO HTML (Paste Handler - IMPROVED)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     
@@ -338,6 +382,21 @@ export default function NewArticlePage() {
     });
   };
 
+  // ✅ Clear Formatting
+  const handleClearFormatting = () => {
+    if (typeof document === 'undefined') return;
+    
+    const editor = editorRef.current;
+    if (!editor) return;
+    
+    if (confirm('Hapus semua formatting dan kembalikan ke teks polos?')) {
+      const textContent = editor.innerText;
+      editor.innerHTML = `<p class="mb-4">${textContent}</p>`;
+      updateCounts();
+      toast({ title: '✅ Formatting dihapus' });
+    }
+  };
+
   const onSubmit = async () => {
     if (!firestore || !user) return;
     
@@ -377,7 +436,7 @@ export default function NewArticlePage() {
     try {
       await setDocumentNonBlocking(doc(firestore, 'articles', articleId), articleData);
       toast({ title: 'Berhasil!', description: 'Artikel Anda telah diterbitkan.' });
-      router.push(`/community/article/${articleId}`);
+      router.push('/community');
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Gagal', description: e.message });
       setIsSubmitting(false);
@@ -532,12 +591,8 @@ export default function NewArticlePage() {
           <ToolbarButton icon={Gamepad2} title="Link Game MAIN Q" onClickOverride={handleInsertGameLink} />
           <ToolbarButton icon={Youtube} title="Embed YouTube" onClickOverride={handleInsertYoutube} />
           <div className="mx-2 h-6 w-px bg-border" />
-          {/* ✅ NEW: Convert Markdown Button */}
-          <ToolbarButton 
-            icon={Wand2} 
-            title="Konversi Markdown ke HTML" 
-            onClickOverride={handleConvertMarkdown} 
-          />
+          <ToolbarButton icon={Wand2} title="Konversi Markdown ke HTML" onClickOverride={handleConvertMarkdown} />
+          <ToolbarButton icon={Eraser} title="Hapus Formatting" onClickOverride={handleClearFormatting} />
         </div>
 
         {/* Editor Area */}
@@ -546,7 +601,7 @@ export default function NewArticlePage() {
             ref={editorRef}
             contentEditable
             onInput={updateCounts}
-            onPaste={handlePaste}  // ✅ Auto-convert on paste
+            onPaste={handlePaste}
             className="editor-area prose prose-lg max-w-none focus:outline-none min-h-[400px] text-gray-800"
             data-placeholder="Mulai tulis artikel inspiratif Anda di sini... (Support paste dari AI dengan format Markdown)"
           />
