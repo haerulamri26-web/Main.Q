@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
-// MARKDOWN PARSER - Convert Markdown to HTML (Improved)
+// MARKDOWN PARSER - Convert Markdown to HTML (FIXED & IMPROVED)
 // ============================================================================
 function convertMarkdownToHtml(text: string): string {
   if (!text) return '';
@@ -38,13 +38,14 @@ function convertMarkdownToHtml(text: string): string {
     return `%%INLINECODE${inlineCodes.length - 1}%%`;
   });
   
-  // 3. Headers (must be before other conversions)
-  html = html.replace(/^###### (.+)$/gm, '<h6 class="text-sm font-bold mb-2">$1</h6>');
-  html = html.replace(/^##### (.+)$/gm, '<h5 class="text-base font-bold mb-2">$1</h5>');
-  html = html.replace(/^#### (.+)$/gm, '<h4 class="text-lg font-bold mb-3">$1</h4>');
-  html = html.replace(/^### (.+)$/gm, '<h3 class="text-xl font-bold mb-3">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="text-2xl font-bold mb-4">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 class="text-3xl font-bold mb-4">$1</h1>');
+  // 3. Headers - FIX: Tambahkan \s* agar bisa mendeteksi header meski ada spasi/indentasi di depan
+  // Urutan harus dari H6 ke H1 agar regex yang lebih panjang tidak terpotong
+  html = html.replace(/^\s*###### (.+?)\s*$/gm, '<h6 class="text-sm font-bold mb-2">$1</h6>');
+  html = html.replace(/^\s*##### (.+?)\s*$/gm, '<h5 class="text-base font-bold mb-2">$1</h5>');
+  html = html.replace(/^\s*#### (.+?)\s*$/gm, '<h4 class="text-lg font-bold mb-3">$1</h4>');
+  html = html.replace(/^\s*### (.+?)\s*$/gm, '<h3 class="text-xl font-bold mb-3">$1</h3>');
+  html = html.replace(/^\s*## (.+?)\s*$/gm, '<h2 class="text-2xl font-bold mb-4">$1</h2>');
+  html = html.replace(/^\s*# (.+?)\s*$/gm, '<h1 class="text-3xl font-bold mb-4">$1</h1>');
   
   // 4. Bold (**text** or __text__)
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -63,22 +64,22 @@ function convertMarkdownToHtml(text: string): string {
   // 8. Images (![alt](url))
   html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4" />');
   
-  // 9. Unordered lists (- or *)
-  html = html.replace(/^[\-\*] (.+)$/gm, '<li class="ml-4">$1</li>');
+  // 9. Unordered lists (- or *) - FIX: Tambahkan \s* agar list dengan indentasi tetap terdeteksi
+  html = html.replace(/^\s*[\-\*] (.+?)$/gm, '<li class="ml-4">$1</li>');
   
-  // 10. Ordered lists (1. 2. 3.)
-  html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>');
+  // 10. Ordered lists (1. 2. 3.) - FIX: Tambahkan \s*
+  html = html.replace(/^\s*\d+\. (.+?)$/gm, '<li class="ml-4">$1</li>');
   
-  // 11. Wrap consecutive <li> in <ul> or <ol>
-  html = html.replace(/(<li class="ml-4">.*<\/li>\n?)+/g, (match) => {
+  // 11. Wrap consecutive <li> in <ul> or <ol> - FIX: Gunakan [\s\S]*? untuk multiline matching
+  html = html.replace(/(<li class="ml-4">[\s\S]*?<\/li>\s*\n?)+/g, (match) => {
     if (match.includes('<li class="ml-4">')) {
       return `<ul class="list-disc list-inside my-4">${match}</ul>`;
     }
     return match;
   });
   
-  // 12. Blockquotes (> text)
-  html = html.replace(/^> (.+)$/gm, '<blockquote class="border-l-4 border-primary bg-muted/30 p-4 my-4 rounded-r-lg">$1</blockquote>');
+  // 12. Blockquotes (> text) - FIX: Tambahkan \s*
+  html = html.replace(/^\s*> (.+?)$/gm, '<blockquote class="border-l-4 border-primary bg-muted/30 p-4 my-4 rounded-r-lg">$1</blockquote>');
   
   // 13. Horizontal rules (--- or ***)
   html = html.replace(/^[\-\*]{3,}$/gm, '<hr class="my-6 border-t" />');
@@ -98,16 +99,19 @@ function convertMarkdownToHtml(text: string): string {
   html = paragraphs.map(p => {
     p = p.trim();
     if (!p) return '';
-    // Don't wrap if already a block element
-    if (p.match(/^<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|section|article)/)) {
+    
+    // FIX: Update regex deteksi block element agar lebih lengkap dan akurat
+    // Mencegah pembungkusan <p> pada element yang sudah block-level
+    if (p.match(/^<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|section|article|figure|table|thead|tbody|tr|td|th)/)) {
       return p;
     }
-    // Replace single newlines with <br>
+    
+    // Replace single newlines with <br> hanya untuk teks biasa
     p = p.replace(/\n/g, '<br>');
     return `<p class="mb-4">${p}</p>`;
   }).join('');
   
-  // 17. Clean up empty paragraphs
+  // 17. Clean up empty paragraphs & nesting issues
   html = html.replace(/<p class="mb-4"><\/p>/g, '');
   html = html.replace(/<p class="mb-4">(<h[1-6]|<ul|<ol|<blockquote|<pre|<hr)/g, '$1');
   html = html.replace(/(<\/h[1-6]|<\/ul>|<\/ol>|<\/blockquote>|<\/pre>|<hr>)<\/p>/g, '$1');
@@ -127,8 +131,11 @@ function cleanAIFormatting(text: string): string {
   // Remove excessive newlines
   text = text.replace(/\n{3,}/g, '\n\n');
   
-  // Trim whitespace
-  text = text.trim();
+  // Remove zero-width spaces dan karakter invisible lainnya
+  text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  
+  // Trim whitespace per line dan overall
+  text = text.split('\n').map(line => line.trimEnd()).join('\n').trim();
   
   return text;
 }
@@ -163,14 +170,14 @@ export default function NewArticlePage() {
   
   const editorRef = useRef<HTMLDivElement>(null);
 
-  const updateCounts = () => {
+  const updateCounts = useCallback(() => {
     if (editorRef.current) {
       const text = editorRef.current.innerText || '';
       const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
       setWordCount(words);
       setCharCount(text.length);
     }
-  };
+  }, []);
 
   const executeCommand = (command: string, value: string | undefined = undefined) => {
     if (typeof document === 'undefined') return;
@@ -303,17 +310,18 @@ export default function NewArticlePage() {
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     
+    // Ambil plain text saja, buang semua style bawaan AI/Website
     const pastedText = e.clipboardData.getData('text/plain');
     
     if (!pastedText) return;
     
-    // Clean AI formatting first
+    // 1. Clean AI formatting & invisible characters
     const cleanedText = cleanAIFormatting(pastedText);
     
-    // Convert Markdown to HTML
+    // 2. Convert Markdown to HTML
     const htmlContent = convertMarkdownToHtml(cleanedText);
     
-    // Insert into editor
+    // 3. Insert into editor
     if (typeof document !== 'undefined') {
       const editor = editorRef.current;
       if (!editor) return;
@@ -328,6 +336,7 @@ export default function NewArticlePage() {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlContent;
         
+        // Insert nodes one by one
         while (tempDiv.firstChild) {
           range.insertNode(tempDiv.firstChild);
         }
@@ -358,7 +367,7 @@ export default function NewArticlePage() {
     const currentContent = editor.innerHTML;
     
     // Check if content looks like Markdown
-    const hasMarkdown = /(\*\*|\_\_|^\#|\-\s|\d+\.\s|\[.*\]\(.*\)|\!\[.*\]\(.*\))/m.test(currentContent);
+    const hasMarkdown = /(\*\*|\_\_|^\s*#|\-\s|\d+\.\s|\[.*\]\(.*\)|\!\[.*\]\(.*\))/m.test(currentContent);
     
     if (!hasMarkdown) {
       toast({ 
@@ -510,6 +519,22 @@ export default function NewArticlePage() {
           width: 100%;
           height: 100%;
           border: 0;
+        }
+        /* Fix untuk contenteditable agar formatting tidak rusak */
+        .editor-area h1, .editor-area h2, .editor-area h3,
+        .editor-area h4, .editor-area h5, .editor-area h6 {
+          margin: 0;
+          line-height: 1.3;
+        }
+        .editor-area ul, .editor-area ol {
+          margin: 0;
+          padding-left: 1.5rem;
+        }
+        .editor-area blockquote {
+          margin: 0;
+        }
+        .editor-area pre {
+          margin: 0;
         }
       `}</style>
       
