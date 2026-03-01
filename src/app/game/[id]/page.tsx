@@ -112,30 +112,6 @@ function generateAutoContent(data: GameData): string {
       </article>
 
       <!-- Section 4: FAQ dengan Schema Markup -->
-      <article itemScope itemType="https://schema.org/FAQPage">
-        <h2 class="text-2xl font-bold text-gray-900 mb-4">❓ Pertanyaan Umum</h2>
-        
-        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" class="mb-5 pb-5 border-b border-gray-100">
-          <h3 itemProp="name" class="font-semibold text-lg text-gray-900">Apakah game ini gratis?</h3>
-          <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-            <p itemProp="text" class="text-gray-700 mt-2">Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara <strong>100% gratis</strong> oleh guru, siswa, dan orang tua. Tidak ada biaya tersembunyi.</p>
-          </div>
-        </div>
-
-        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question" class="mb-5 pb-5 border-b border-gray-100">
-          <h3 itemProp="name" class="font-semibold text-lg text-gray-900">Apakah perlu install aplikasi?</h3>
-          <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-            <p itemProp="text" class="text-gray-700 mt-2">Tidak perlu install apapun! Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern (Chrome, Edge, Firefox, Safari) di laptop, tablet, maupun smartphone.</p>
-          </div>
-        </div>
-
-        <div itemScope itemProp="mainEntity" itemType="https://schema.org/Question">
-          <h3 itemProp="name" class="font-semibold text-lg text-gray-900">Cocok untuk kurikulum apa?</h3>
-          <div itemScope itemProp="acceptedAnswer" itemType="https://schema.org/Answer">
-            <p itemProp="text" class="text-gray-700 mt-2">Materi game disusun mengacu pada <strong>Capaian Pembelajaran (CP) Kurikulum Merdeka</strong>, sehingga relevan untuk pembelajaran di sekolah Indonesia jenjang ${data.class}.</p>
-          </div>
-        </div>
-      </article>
       
     </section>
   `;
