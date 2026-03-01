@@ -1,10 +1,11 @@
+
 'use client';
 
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { Button } from './ui/button';
 import Link from 'next/link';
 import { getAuth, signOut } from 'firebase/auth';
-import { Loader2, User as UserIcon, LogOut, HelpCircle, Flame, BookOpen, FlaskConical } from 'lucide-react';
+import { Loader2, User as UserIcon, LogOut, Flame, FlaskConical, Bell, Users, HelpCircle, BookOpen } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,10 +15,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { collection, query, where, limit } from 'firebase/firestore';
 
 export function AuthButtons() {
   const { user, isUserLoading } = useUser();
   const auth = getAuth();
+  const firestore = useFirestore();
+
+  const unreadNotifQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(
+      collection(firestore, 'notifications'),
+      where('userId', '==', user.uid),
+      where('read', '==', false),
+      limit(10)
+    );
+  }, [firestore, user]);
+
+  const { data: unreadNotifs } = useCollection(unreadNotifQuery);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -30,29 +45,49 @@ export function AuthButtons() {
   return (
     <>
       <Button asChild variant="ghost" className="hidden sm:flex">
+        <Link href="/community">
+          <Users className="mr-2 h-4 w-4" />
+          Komunitas
+        </Link>
+      </Button>
+      <Button asChild variant="ghost" className="hidden sm:flex">
         <Link href="/popular">
           <Flame className="mr-2 h-4 w-4 text-orange-500" />
           Populer
         </Link>
       </Button>
       <Button asChild variant="ghost" className="hidden md:flex">
+        <Link href="/lab">
+          <FlaskConical className="mr-2 h-4 w-4" />
+          Lab
+        </Link>
+      </Button>
+      <Button asChild variant="ghost" className="hidden lg:flex">
         <Link href="/tutorial">
           <BookOpen className="mr-2 h-4 w-4" />
           Tutorial
         </Link>
       </Button>
       <Button asChild variant="ghost" className="hidden lg:flex">
-        <Link href="/lab">
-          <FlaskConical className="mr-2 h-4 w-4" />
-          Lab Virtual
+        <Link href="/help">
+          <HelpCircle className="mr-2 h-4 w-4" />
+          Bantuan
         </Link>
       </Button>
-      <Button asChild variant="ghost" className="hidden xl:flex">
-        <Link href="/help">Bantuan</Link>
-      </Button>
-      <Button asChild variant="ghost">
-        <Link href={user ? "/upload" : "/login"}>Unggah</Link>
-      </Button>
+      
+      {user && (
+        <Button asChild variant="ghost" size="icon" className="relative ml-2">
+          <Link href="/notifications">
+            <Bell className="h-5 w-5" />
+            {unreadNotifs && unreadNotifs.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-4 w-4 bg-destructive text-[10px] text-white rounded-full flex items-center justify-center animate-pulse">
+                {unreadNotifs.length > 9 ? '9+' : unreadNotifs.length}
+              </span>
+            )}
+          </Link>
+        </Button>
+      )}
+
       {user ? (
          <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -79,28 +114,35 @@ export function AuthButtons() {
                 <span>Profil</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="sm:hidden">
-              <Link href="/popular">
-                <Flame className="mr-2 h-4 w-4" />
-                <span>Populer</span>
+            <DropdownMenuItem asChild>
+              <Link href="/notifications">
+                <Bell className="mr-2 h-4 w-4" />
+                <span>Notifikasi</span>
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild className="md:hidden">
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
               <Link href="/tutorial">
                 <BookOpen className="mr-2 h-4 w-4" />
                 <span>Tutorial</span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className="lg:hidden">
-              <Link href="/lab">
-                <FlaskConical className="mr-2 h-4 w-4" />
-                <span>Lab Virtual</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/help">
                 <HelpCircle className="mr-2 h-4 w-4" />
                 <span>Pusat Bantuan</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="sm:hidden">
+              <Link href="/community">
+                <Users className="mr-2 h-4 w-4" />
+                <span>Komunitas</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="sm:hidden">
+              <Link href="/popular">
+                <Flame className="mr-2 h-4 w-4 text-orange-500" />
+                <span>Populer</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
