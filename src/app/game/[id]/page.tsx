@@ -50,25 +50,23 @@ function generateMetaDescription(data: GameData): string {
  */
 function generateAutoContent(data: GameData): string {
   const subjectReadable = data.subject.charAt(0).toUpperCase() + data.subject.slice(1).toLowerCase();
-  
-  const uploadYear = data.createdAt 
+  const uploadYear = data.createdAt
     ? new Date(data.createdAt).getFullYear().toString()
     : new Date().getFullYear().toString();
   
-  const customDesc = data.description?.trim() 
-    ? `<p class="mt-3 text-gray-700 leading-relaxed">${data.description}</p>` 
+  const customDesc = data.description?.trim()
+    ? `<p class="mt-3 text-gray-700 leading-relaxed">${data.description}</p>`
     : '';
 
   return `
     <section class="mt-10 prose prose-indigo max-w-none" itemScope itemType="https://schema.org/LearningResource">
-      
       <!-- Section 1: Pengantar Otomatis -->
       <article itemProp="description" class="mb-8">
         <h2 class="text-2xl font-bold text-gray-900 mb-4">🎮 Tentang Game "${data.title}"</h2>
         <p class="text-gray-700 leading-relaxed text-lg">
-          <strong>${data.title}</strong> adalah media pembelajaran interaktif berbasis web 
-          untuk mata pelajaran <strong>${subjectReadable}</strong> jenjang ${data.class}. 
-          Game ini dirancang untuk membantu siswa memahami konsep ${subjectReadable.toLowerCase()} 
+          <strong>${data.title}</strong> adalah media pembelajaran interaktif berbasis web
+          untuk mata pelajaran <strong>${subjectReadable}</strong> jenjang ${data.class}.
+          Game ini dirancang untuk membantu siswa memahami konsep ${subjectReadable.toLowerCase()}
           melalui pendekatan gamifikasi yang menyenangkan, sesuai dengan prinsip Kurikulum Merdeka.
         </p>
         ${customDesc}
@@ -111,8 +109,24 @@ function generateAutoContent(data: GameData): string {
         </div>
       </article>
 
-      <!-- Section 4: FAQ dengan Schema Markup -->
-      
+      <!-- Section 4: FAQ HTML (Tanpa Schema - JSON-LD sudah di page.tsx) -->
+      <article>
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">❓ Pertanyaan Umum</h2>
+        <div class="space-y-4">
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Apakah game ini gratis?</h3>
+            <p class="text-gray-700 mt-1">Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara <strong>100% gratis</strong> oleh guru, siswa, dan orang tua.</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Apakah perlu install aplikasi?</h3>
+            <p class="text-gray-700 mt-1">Tidak perlu install apapun! Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern di laptop, tablet, maupun smartphone.</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-lg text-gray-900">Cocok untuk kurikulum apa?</h3>
+            <p class="text-gray-700 mt-1">Materi game disusun mengacu pada <strong>Capaian Pembelajaran (CP) Kurikulum Merdeka</strong>, sehingga relevan untuk pembelajaran di sekolah Indonesia jenjang ${data.class}.</p>
+          </div>
+        </div>
+      </article>
     </section>
   `;
 }
@@ -122,15 +136,50 @@ function generateAutoContent(data: GameData): string {
  */
 function generateBreadcrumbJsonLd(data: GameData) {
   const subjectSlug = data.subject.toLowerCase().replace(/\s+/g, '-');
-  
   return {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://mainq.my.id" },
-      { "@type": "ListItem", "position": 2, "name": "Game Edukasi", "item": "https://mainq.my.id" },
-      { "@type": "ListItem", "position": 3, "name": data.subject, "item": `https://mainq.my.id/?subject=${subjectSlug}` },
+      { "@type": "ListItem", "position": 2, "name": "Game Edukasi", "item": "https://mainq.my.id/games" },
+      { "@type": "ListItem", "position": 3, "name": data.subject, "item": `https://mainq.my.id/games?subject=${subjectSlug}` },
       { "@type": "ListItem", "position": 4, "name": data.title }
+    ]
+  };
+}
+
+/**
+ * Generate FAQPage JSON-LD (Plain text only, no HTML)
+ */
+function generateFAQJsonLd(data: GameData) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Apakah game ini gratis?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Ya, seluruh game edukasi di MAIN Q dapat diakses dan dimainkan secara 100% gratis oleh guru, siswa, dan orang tua."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Apakah perlu install aplikasi?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tidak perlu install apapun. Game berbasis HTML5 sehingga bisa langsung dimainkan di browser modern seperti Chrome, Edge, Firefox, atau Safari tanpa download."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Cocok untuk kurikulum apa?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": `Materi game disusun mengacu pada Capaian Pembelajaran (CP) Kurikulum Merdeka untuk jenjang ${data.class}.`
+        }
+      }
     ]
   };
 }
@@ -176,10 +225,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       description: 'Halaman game yang Anda cari tidak tersedia.',
     };
   }
-
+  
   const metaDescription = generateMetaDescription(data);
   const canonicalUrl = `https://mainq.my.id/game/${params.id}`;
-
+  
   return {
     title: `${data.title} - Game Edukasi ${data.subject} ${data.class} | MAIN Q`,
     description: metaDescription,
@@ -192,6 +241,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       siteName: 'MAIN Q',
       locale: 'id_ID',
       url: canonicalUrl,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: data.title,
+      description: metaDescription,
     },
   };
 }
@@ -206,40 +260,72 @@ export default async function Page({ params }: { params: { id: string } }) {
     notFound();
   }
 
+  // Main JSON-LD: SoftwareApplication + LearningResource
+  const canonicalUrl = `https://mainq.my.id/game/${params.id}`;
+  
   const mainJsonLd = {
     "@context": "https://schema.org",
     "@type": ["SoftwareApplication", "LearningResource"],
     "name": data.title,
     "description": generateMetaDescription(data),
     "applicationCategory": "EducationalGame",
+    "applicationSubCategory": "Educational",
     "operatingSystem": "Web",
+    "browserRequirements": "Requires JavaScript. Requires HTML5.",
     "author": { "@type": "Person", "name": data.authorName },
     "publisher": { "@type": "Organization", "name": "MAIN Q", "url": "https://mainq.my.id" },
     "learningResourceType": "Educational Game",
     "educationalLevel": data.class,
+    "educationalUse": "InstructionalMaterial",
     "about": data.subject,
     "inLanguage": "id",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR" },
-    "url": `https://mainq.my.id/game/${params.id}`,
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "IDR",
+      "availability": "https://schema.org/InStock"
+    },
+    "url": canonicalUrl,
+    "isAccessibleForFree": true,
+    "datePublished": data.createdAt || new Date().toISOString(),
+    "dateModified": new Date().toISOString(),
   };
+
+  const faqJsonLd = generateFAQJsonLd(data);
+  const breadcrumbJsonLd = generateBreadcrumbJsonLd(data);
 
   return (
     <>
+      {/* JSON-LD 1: Main Schema */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(mainJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(mainJsonLd)
+        }}
       />
+      
+      {/* JSON-LD 2: FAQPage */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateBreadcrumbJsonLd(data)) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd)
+        }}
+      />
+      
+      {/* JSON-LD 3: BreadcrumbList */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd)
+        }}
       />
 
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <GameClient id={params.id} />
         
-        <div 
+        <div
           className="mt-10 text-gray-800"
-          dangerouslySetInnerHTML={{ __html: generateAutoContent(data) }} 
+          dangerouslySetInnerHTML={{ __html: generateAutoContent(data) }}
         />
         
         <div className="mt-10 pt-6 border-t border-gray-200">
@@ -253,8 +339,8 @@ export default async function Page({ params }: { params: { id: string } }) {
         </div>
         
         <div className="mt-8 text-center">
-          <a 
-            href="/" 
+          <a
+            href="/"
             className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
           >
             <span>🎮</span>
