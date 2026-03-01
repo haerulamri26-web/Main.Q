@@ -16,17 +16,23 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+interface Article {
+  id: string;
+  userId: string;
+  title: string;
+  category: string;
+  content: string;
+  labels: string[];
+}
+
 // ============================================================================
-// MARKDOWN PARSER - Convert Markdown to HTML
+// MARKDOWN PARSER
 // ============================================================================
 function convertMarkdownToHtml(text: string): string {
   if (!text) return '';
-  
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  
   const lines = text.split('\n');
   const output: string[] = [];
-  
   let inCodeBlock = false;
   let codeBlockContent: string[] = [];
   let inList = false;
@@ -35,7 +41,7 @@ function convertMarkdownToHtml(text: string): string {
   let inBlockquote = false;
   let blockquoteContent: string[] = [];
   let paragraphLines: string[] = [];
-  
+
   const flushParagraph = () => {
     if (paragraphLines.length > 0) {
       const content = paragraphLines.join('<br>');
@@ -44,7 +50,7 @@ function convertMarkdownToHtml(text: string): string {
       paragraphLines = [];
     }
   };
-  
+
   const flushList = () => {
     if (inList && listItems.length > 0) {
       const tag = listType === 'ul' ? 'ul' : 'ol';
@@ -53,7 +59,7 @@ function convertMarkdownToHtml(text: string): string {
       inList = false;
     }
   };
-  
+
   const flushBlockquote = () => {
     if (inBlockquote && blockquoteContent.length > 0) {
       const content = blockquoteContent.join('<br>');
@@ -63,7 +69,7 @@ function convertMarkdownToHtml(text: string): string {
       inBlockquote = false;
     }
   };
-  
+
   const applyInlineFormatting = (text: string): string => {
     let result = text;
     const inlineCodes: string[] = [];
@@ -83,11 +89,10 @@ function convertMarkdownToHtml(text: string): string {
     });
     return result;
   };
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmedLine = line.trim();
-    
     if (trimmedLine.startsWith('```')) {
       if (!inCodeBlock) {
         flushParagraph(); flushList(); flushBlockquote();
@@ -99,9 +104,7 @@ function convertMarkdownToHtml(text: string): string {
       }
       continue;
     }
-    
     if (inCodeBlock) { codeBlockContent.push(line); continue; }
-    
     const headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
     if (headerMatch) {
       flushParagraph(); flushList(); flushBlockquote();
@@ -115,7 +118,6 @@ function convertMarkdownToHtml(text: string): string {
       output.push(`<h${level} class="${sizes[level]}">${content}</h${level}>`);
       continue;
     }
-    
     if (trimmedLine.startsWith('>')) {
       flushParagraph(); flushList();
       inBlockquote = true;
@@ -124,7 +126,6 @@ function convertMarkdownToHtml(text: string): string {
     } else if (inBlockquote && trimmedLine === '') {
       flushBlockquote(); continue;
     }
-    
     const ulMatch = trimmedLine.match(/^[\-\*]\s+(.+)$/);
     if (ulMatch) {
       flushParagraph(); flushBlockquote();
@@ -133,7 +134,6 @@ function convertMarkdownToHtml(text: string): string {
       listItems.push(`<li class="ml-4">${content}</li>`);
       continue;
     }
-    
     const olMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
     if (olMatch) {
       flushParagraph(); flushBlockquote();
@@ -142,33 +142,26 @@ function convertMarkdownToHtml(text: string): string {
       listItems.push(`<li class="ml-4">${content}</li>`);
       continue;
     }
-    
     if (/^[\-\*]{3,}$/.test(trimmedLine)) {
       flushParagraph(); flushList(); flushBlockquote();
       output.push('<hr class="my-6 border-t" />');
       continue;
     }
-    
     if (trimmedLine === '') {
       flushParagraph(); flushList(); flushBlockquote();
       continue;
     }
-    
     flushList(); flushBlockquote();
     paragraphLines.push(applyInlineFormatting(trimmedLine));
   }
-  
   flushParagraph(); flushList(); flushBlockquote();
-  
   if (inCodeBlock && codeBlockContent.length > 0) {
     const code = codeBlockContent.join('\n');
     output.push(`<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${code}</code></pre>`);
   }
-  
   let html = output.join('\n');
   html = html.replace(/<p class="mb-4"><\/p>/g, '');
   html = html.replace(/<p class="mb-4"><br><\/p>/g, '');
-  
   return html.trim();
 }
 
@@ -200,14 +193,19 @@ export default function EditArticlePage() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
-  
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false, italic: false, underline: false, strikeThrough: false,
+    justifyLeft: false, justifyCenter: false, justifyRight: false,
+    insertUnorderedList: false, insertOrderedList: false,
+  });
+
   const editorRef = useRef<HTMLDivElement>(null);
 
   const articleRef = useMemoFirebase(() => {
     if (!firestore || !articleId) return null;
     return doc(firestore, 'articles', articleId);
   }, [firestore, articleId]);
-  
+
   const { data: article, isLoading: isArticleLoading } = useDoc(articleRef);
 
   useEffect(() => {
@@ -219,6 +217,27 @@ export default function EditArticlePage() {
       updateCounts();
     }
   }, [article, title]);
+
+  const checkActiveFormats = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    setActiveFormats({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline'),
+      strikeThrough: document.queryCommandState('strikeThrough'),
+      justifyLeft: document.queryCommandState('justifyLeft'),
+      justifyCenter: document.queryCommandState('justifyCenter'),
+      justifyRight: document.queryCommandState('justifyRight'),
+      insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+      insertOrderedList: document.queryCommandState('insertOrderedList'),
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleSelectionChange = () => checkActiveFormats();
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [checkActiveFormats]);
 
   const updateCounts = useCallback(() => {
     if (editorRef.current) {
@@ -232,15 +251,18 @@ export default function EditArticlePage() {
   const executeCommand = (command: string, value: string | undefined = undefined) => {
     if (typeof document === 'undefined') return;
     document.execCommand(command, false, value);
-    if (editorRef.current) editorRef.current.focus();
+    editorRef.current?.focus();
     updateCounts();
+    checkActiveFormats();
   };
 
+  // ✅ IMPROVED: Link menggunakan judul artikel sebagai default teks
   const handleInsertLink = () => {
     const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
-      setLinkText(selection.toString());
-    }
+    const selectedText = selection?.toString().trim() || '';
+    // Default: gunakan selected text, atau judul artikel, atau URL
+    const defaultLinkText = selectedText || title || '';
+    setLinkText(defaultLinkText);
     setShowLinkModal(true);
   };
 
@@ -259,7 +281,7 @@ export default function EditArticlePage() {
     } else if (linkText) {
       const link = document.createElement('a');
       link.href = linkUrl;
-      link.innerText = linkText || linkUrl;
+      link.innerText = linkText;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.className = 'text-primary underline';
@@ -276,6 +298,7 @@ export default function EditArticlePage() {
     setLinkUrl('');
     setLinkText('');
     updateCounts();
+    checkActiveFormats();
   };
 
   const handleInsertYoutube = () => {
@@ -435,24 +458,29 @@ export default function EditArticlePage() {
     value,
     icon: Icon,
     title,
+    isActive,
     onClickOverride
   }: {
     command?: string,
     value?: string,
     icon: any,
     title: string,
+    isActive?: boolean,
     onClickOverride?: () => void
   }) => (
     <Button
       variant="ghost"
       size="icon"
-      className="h-8 w-8 transition-colors hover:bg-primary/10 hover:text-primary"
+      className={cn(
+        "h-8 w-8 rounded-md transition-colors hover:bg-primary/10 hover:text-primary",
+        isActive && "bg-primary/10 text-primary"
+      )}
       onMouseDown={(e) => {
         e.preventDefault();
-        if (!onClickOverride && command) {
-          executeCommand(command, value);
-        } else if (onClickOverride) {
+        if (onClickOverride) {
           onClickOverride();
+        } else if (command) {
+          executeCommand(command, value);
         }
       }}
       title={title}
@@ -469,16 +497,48 @@ export default function EditArticlePage() {
           color: #9ca3af;
           cursor: text;
         }
-        .editor-area a { color: hsl(var(--primary)); text-decoration: underline; }
-        .youtube-embed { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0; border-radius: 12px; }
-        .youtube-embed iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+        .editor-area a {
+          color: hsl(var(--primary));
+          text-decoration: underline;
+          font-weight: 500;
+        }
+        .editor-area a:hover {
+          opacity: 0.85;
+        }
+        .youtube-embed {
+          position: relative;
+          padding-bottom: 56.25%;
+          height: 0;
+          overflow: hidden;
+          max-width: 100%;
+          margin: 20px 0;
+          border-radius: 12px;
+        }
+        .youtube-embed iframe {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: 0;
+        }
         .editor-area h1, .editor-area h2, .editor-area h3,
-        .editor-area h4, .editor-area h5, .editor-area h6 { margin: 0; line-height: 1.3; }
-        .editor-area ul, .editor-area ol { margin: 0; padding-left: 1.5rem; }
-        .editor-area blockquote { margin: 0; }
-        .editor-area pre { margin: 0; }
+        .editor-area h4, .editor-area h5, .editor-area h6 {
+          margin: 0;
+          line-height: 1.3;
+        }
+        .editor-area ul, .editor-area ol {
+          margin: 0;
+          padding-left: 1.5rem;
+        }
+        .editor-area blockquote {
+          margin: 0;
+        }
+        .editor-area pre {
+          margin: 0;
+        }
       `}</style>
-      
+
       <header className="bg-white border-b sticky top-0 z-50 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -526,10 +586,10 @@ export default function EditArticlePage() {
           <ToolbarButton command="undo" icon={Undo} title="Undo" />
           <ToolbarButton command="redo" icon={Redo} title="Redo" />
           <div className="mx-2 h-6 w-px bg-border" />
-          <ToolbarButton command="bold" icon={Bold} title="Tebal (Ctrl+B)" />
-          <ToolbarButton command="italic" icon={Italic} title="Miring (Ctrl+I)" />
-          <ToolbarButton command="underline" icon={Underline} title="Garis Bawah (Ctrl+U)" />
-          <ToolbarButton command="strikeThrough" icon={Strikethrough} title="Coret" />
+          <ToolbarButton command="bold" icon={Bold} title="Tebal (Ctrl+B)" isActive={activeFormats.bold} />
+          <ToolbarButton command="italic" icon={Italic} title="Miring (Ctrl+I)" isActive={activeFormats.italic} />
+          <ToolbarButton command="underline" icon={Underline} title="Garis Bawah (Ctrl+U)" isActive={activeFormats.underline} />
+          <ToolbarButton command="strikeThrough" icon={Strikethrough} title="Coret" isActive={activeFormats.strikeThrough} />
           <div className="mx-2 h-6 w-px bg-border" />
           <select
             onChange={(e) => executeCommand('formatBlock', e.target.value)}
@@ -541,12 +601,12 @@ export default function EditArticlePage() {
             <option value="H3">Heading 3</option>
           </select>
           <div className="mx-2 h-6 w-px bg-border" />
-          <ToolbarButton command="justifyLeft" icon={AlignLeft} title="Rata Kiri" />
-          <ToolbarButton command="justifyCenter" icon={AlignCenter} title="Rata Tengah" />
-          <ToolbarButton command="justifyRight" icon={AlignRight} title="Rata Kanan" />
+          <ToolbarButton command="justifyLeft" icon={AlignLeft} title="Rata Kiri" isActive={activeFormats.justifyLeft} />
+          <ToolbarButton command="justifyCenter" icon={AlignCenter} title="Rata Tengah" isActive={activeFormats.justifyCenter} />
+          <ToolbarButton command="justifyRight" icon={AlignRight} title="Rata Kanan" isActive={activeFormats.justifyRight} />
           <div className="mx-2 h-6 w-px bg-border" />
-          <ToolbarButton command="insertUnorderedList" icon={List} title="Daftar Bulat" />
-          <ToolbarButton command="insertOrderedList" icon={ListOrdered} title="Daftar Angka" />
+          <ToolbarButton command="insertUnorderedList" icon={List} title="Daftar Bulat" isActive={activeFormats.insertUnorderedList} />
+          <ToolbarButton command="insertOrderedList" icon={ListOrdered} title="Daftar Angka" isActive={activeFormats.insertOrderedList} />
           <div className="mx-2 h-6 w-px bg-border" />
           <ToolbarButton command="formatBlock" value="blockquote" icon={Quote} title="Kutipan" />
           <div className="mx-2 h-6 w-px bg-border" />
@@ -563,6 +623,8 @@ export default function EditArticlePage() {
             ref={editorRef}
             contentEditable
             onInput={updateCounts}
+            onKeyUp={checkActiveFormats}
+            onMouseUp={checkActiveFormats}
             onPaste={handlePaste}
             className="editor-area prose prose-lg max-w-none focus:outline-none min-h-[400px] text-gray-800"
             data-placeholder="Edit artikel Anda di sini... (Support paste dari AI dengan format Markdown)"
@@ -632,13 +694,16 @@ export default function EditArticlePage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold text-gray-600 mb-2 block">Teks Link (Opsional)</label>
+                <label className="text-sm font-semibold text-gray-600 mb-2 block">Teks Link</label>
                 <Input
                   value={linkText}
                   onChange={(e) => setLinkText(e.target.value)}
-                  placeholder="Klik di sini untuk main game"
+                  placeholder="Judul artikel akan digunakan jika kosong"
                   className="h-11"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Kosongkan untuk menggunakan judul artikel sebagai teks link
+                </p>
               </div>
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setShowLinkModal(false)} className="flex-1">
