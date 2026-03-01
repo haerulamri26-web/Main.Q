@@ -1,8 +1,8 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFirestore, useUser, setDocumentNonBlocking } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useRouter, useParams } from 'next/navigation';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,18 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+
+// ============================================================================
+// HELPER: Generate Slug dari Judul (Untuk URL Artikel)
+// ============================================================================
+function generateSlug(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Hapus karakter spesial
+    .replace(/[\s_-]+/g, '-') // Ganti spasi/underscore dengan strip
+    .replace(/^-+|-+$/g, ''); // Hapus strip di awal/akhir
+}
 
 // ============================================================================
 // MARKDOWN PARSER
@@ -165,10 +177,12 @@ function cleanAIFormatting(text: string): string {
   return text;
 }
 
-export default function NewArticlePage() {
+export default function EditArticlePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const params = useParams();
+  const articleId = params.id as string;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
@@ -189,6 +203,23 @@ export default function NewArticlePage() {
   });
 
   const editorRef = useRef<HTMLDivElement>(null);
+
+  const articleRef = useMemoFirebase(() => {
+    if (!firestore || !articleId) return null;
+    return doc(firestore, 'articles', articleId);
+  }, [firestore, articleId]);
+
+  const { data: article, isLoading: isArticleLoading } = useDoc(articleRef);
+
+  useEffect(() => {
+    if (article && editorRef.current && !title) {
+      setTitle(article.title);
+      setCategory(article.category);
+      setLabels(article.labels?.join(', ') || '');
+      editorRef.current.innerHTML = article.content;
+      updateCounts();
+    }
+  }, [article, title]);
 
   const checkActiveFormats = useCallback(() => {
     if (typeof document === 'undefined') return;
@@ -228,11 +259,11 @@ export default function NewArticlePage() {
     checkActiveFormats();
   };
 
-  // ✅ IMPROVED: Link menggunakan judul artikel sebagai default teks
+  // ✅ FIX: Insert Link mengikuti posisi kursor (tidak loncat ke bawah)
   const handleInsertLink = () => {
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim() || '';
-    // Default: gunakan selected text, atau judul artikel, atau URL
+    // Default: gunakan selected text, atau judul artikel
     const defaultLinkText = selectedText || title || '';
     setLinkText(defaultLinkText);
     setShowLinkModal(true);
@@ -247,25 +278,29 @@ export default function NewArticlePage() {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
+    
     const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) {
-      document.execCommand('createLink', false, linkUrl);
-    } else if (linkText) {
+    if (selection && selection.rangeCount > 0) {
+      // ✅ FIX: Gunakan range yang aktif saat ini (posisi kursor), JANGAN selectNodeContents
+      const range = selection.getRangeAt(0);
+      range.deleteContents(); // Hapus teks yang dipilih (jika ada)
+
       const link = document.createElement('a');
       link.href = linkUrl;
-      link.innerText = linkText;
+      link.innerText = linkText || linkUrl;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.className = 'text-primary underline';
-      const range = document.createRange();
-      range.selectNodeContents(editor);
-      range.collapse(false);
+
       range.insertNode(link);
+      
+      // Pindahkan kursor ke setelah link
       range.setStartAfter(link);
       range.setEndAfter(link);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
+      selection.removeAllRanges();
+      selection.addRange(range);
     }
+    
     setShowLinkModal(false);
     setLinkUrl('');
     setLinkText('');
@@ -307,15 +342,19 @@ export default function NewArticlePage() {
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
     iframe.allowFullscreen = true;
     embedDiv.appendChild(iframe);
-    const range = document.createRange();
-    range.selectNodeContents(editor);
-    range.collapse(false);
-    range.insertNode(embedDiv);
-    range.setStartAfter(embedDiv);
-    range.setEndAfter(embedDiv);
+    
+    // ✅ FIX: Insert di posisi kursor
     const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(embedDiv);
+      range.setStartAfter(embedDiv);
+      range.setEndAfter(embedDiv);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+    
     setShowYoutubeModal(false);
     setYoutubeUrl('');
     updateCounts();
@@ -383,8 +422,8 @@ export default function NewArticlePage() {
     }
   };
 
-  const onSubmit = async () => {
-    if (!firestore || !user) return;
+  const onUpdate = async () => {
+    if (!firestore || !user || !article) return;
     const content = editorRef.current?.innerHTML || '';
     if (!title.trim() || title.length < 5) {
       toast({ variant: 'destructive', title: 'Judul Terlalu Pendek', description: 'Minimal 5 karakter.' });
@@ -399,23 +438,24 @@ export default function NewArticlePage() {
       return;
     }
     setIsSubmitting(true);
-    setSaveStatus('Menerbitkan...');
-    const articleId = `${Date.now()}-${user.uid.substring(0, 5)}`;
-    const articleData = {
-      title,
-      category,
-      content,
-      labels: labels.split(',').map(l => l.trim()).filter(l => l),
-      userId: user.uid,
-      authorName: user.displayName || 'Guru Kreatif',
-      authorPhotoURL: user.photoURL || null,
-      createdAt: serverTimestamp(),
-      views: 0,
-    };
+    setSaveStatus('Menyimpan...');
+    
+    // ✅ FIX: Generate slug dari judul untuk URL yang rapi (jika diperlukan di masa depan)
+    const slug = generateSlug(title);
+    
     try {
-      await setDocumentNonBlocking(doc(firestore, 'articles', articleId), articleData);
-      toast({ title: 'Berhasil!', description: 'Artikel Anda telah diterbitkan.' });
-      router.push('/community');
+      await updateDoc(doc(firestore, 'articles', articleId), {
+        title,
+        category,
+        content,
+        slug, // Simpan slug untuk URL artikel
+        labels: labels.split(',').map(l => l.trim()).filter(l => l),
+      });
+      toast({ title: 'Berhasil!', description: 'Perubahan telah disimpan.' });
+      setSaveStatus('Tersimpan');
+      setTimeout(() => {
+        router.push('/profile');
+      }, 1000);
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Gagal', description: e.message });
       setIsSubmitting(false);
@@ -423,9 +463,9 @@ export default function NewArticlePage() {
     }
   };
 
-  if (isUserLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>;
-  if (!user) {
-    router.push('/login?redirect=/community/new');
+  if (isUserLoading || isArticleLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>;
+  if (!user || (article && user.uid !== article.userId)) {
+    router.push('/login');
     return null;
   }
 
@@ -518,30 +558,30 @@ export default function NewArticlePage() {
       <header className="bg-white border-b sticky top-0 z-50 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/community" className="text-gray-500 hover:text-primary transition-colors">
+            <Link href="/profile" className="text-gray-500 hover:text-primary transition-colors">
               <ChevronLeft className="h-6 w-6" />
             </Link>
             <div className="flex items-center gap-2">
               <div className="bg-primary/10 p-1.5 rounded-lg">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
-              <span className="text-lg font-medium text-gray-700 hidden sm:inline">Editor Postingan</span>
+              <span className="text-lg font-medium text-gray-700 hidden sm:inline">Edit Postingan</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-              saveStatus === 'Siap' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+              saveStatus === 'Siap' || saveStatus === 'Tersimpan' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
             }`}>
               {saveStatus}
             </span>
             <Button
               size="sm"
               className="rounded-full px-6 shadow-md"
-              onClick={onSubmit}
+              onClick={onUpdate}
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : null}
-              Terbitkan
+              Simpan
             </Button>
           </div>
         </div>
@@ -603,7 +643,7 @@ export default function NewArticlePage() {
             onMouseUp={checkActiveFormats}
             onPaste={handlePaste}
             className="editor-area prose prose-lg max-w-none focus:outline-none min-h-[400px] text-gray-800"
-            data-placeholder="Mulai tulis artikel inspiratif Anda di sini... (Support paste dari AI dengan format Markdown)"
+            data-placeholder="Edit artikel Anda di sini... (Support paste dari AI dengan format Markdown)"
           />
         </div>
 
