@@ -17,106 +17,220 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 // ============================================================================
-// MARKDOWN PARSER - Convert Markdown to HTML (FIXED & IMPROVED)
+// MARKDOWN PARSER - Convert Markdown to HTML (REWRITTEN - LINE BY LINE)
 // ============================================================================
 function convertMarkdownToHtml(text: string): string {
   if (!text) return '';
   
-  let html = text;
+  // Normalize line endings
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
-  // 1. Protect code blocks first (prevent other conversions inside code)
-  const codeBlocks: string[] = [];
-  html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
-    codeBlocks.push(code);
-    return `%%CODEBLOCK${codeBlocks.length - 1}%%`;
-  });
+  const lines = text.split('\n');
+  const output: string[] = [];
   
-  // 2. Protect inline code
-  const inlineCodes: string[] = [];
-  html = html.replace(/`([^`]+)`/g, (match, code) => {
-    inlineCodes.push(code);
-    return `%%INLINECODE${inlineCodes.length - 1}%%`;
-  });
+  // State tracking
+  let inCodeBlock = false;
+  let codeBlockContent: string[] = [];
+  let inList = false;
+  let listType: 'ul' | 'ol' = 'ul';
+  let listItems: string[] = [];
+  let inBlockquote = false;
+  let blockquoteContent: string[] = [];
+  let paragraphLines: string[] = [];
   
-  // 3. Headers - FIX: Tambahkan \s* agar bisa mendeteksi header meski ada spasi/indentasi di depan
-  // Urutan harus dari H6 ke H1 agar regex yang lebih panjang tidak terpotong
-  html = html.replace(/^\s*###### (.+?)\s*$/gm, '<h6 class="text-sm font-bold mb-2">$1</h6>');
-  html = html.replace(/^\s*##### (.+?)\s*$/gm, '<h5 class="text-base font-bold mb-2">$1</h5>');
-  html = html.replace(/^\s*#### (.+?)\s*$/gm, '<h4 class="text-lg font-bold mb-3">$1</h4>');
-  html = html.replace(/^\s*### (.+?)\s*$/gm, '<h3 class="text-xl font-bold mb-3">$1</h3>');
-  html = html.replace(/^\s*## (.+?)\s*$/gm, '<h2 class="text-2xl font-bold mb-4">$1</h2>');
-  html = html.replace(/^\s*# (.+?)\s*$/gm, '<h1 class="text-3xl font-bold mb-4">$1</h1>');
-  
-  // 4. Bold (**text** or __text__)
-  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-  
-  // 5. Italic (*text* or _text_)
-  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
-  
-  // 6. Strikethrough (~~text~~)
-  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-  
-  // 7. Links ([text](url))
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>');
-  
-  // 8. Images (![alt](url))
-  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4" />');
-  
-  // 9. Unordered lists (- or *) - FIX: Tambahkan \s* agar list dengan indentasi tetap terdeteksi
-  html = html.replace(/^\s*[\-\*] (.+?)$/gm, '<li class="ml-4">$1</li>');
-  
-  // 10. Ordered lists (1. 2. 3.) - FIX: Tambahkan \s*
-  html = html.replace(/^\s*\d+\. (.+?)$/gm, '<li class="ml-4">$1</li>');
-  
-  // 11. Wrap consecutive <li> in <ul> or <ol> - FIX: Gunakan [\s\S]*? untuk multiline matching
-  html = html.replace(/(<li class="ml-4">[\s\S]*?<\/li>\s*\n?)+/g, (match) => {
-    if (match.includes('<li class="ml-4">')) {
-      return `<ul class="list-disc list-inside my-4">${match}</ul>`;
+  const flushParagraph = () => {
+    if (paragraphLines.length > 0) {
+      const content = paragraphLines.join('<br>');
+      // Apply inline formatting
+      let formatted = applyInlineFormatting(content);
+      output.push(`<p class="mb-4">${formatted}</p>`);
+      paragraphLines = [];
     }
-    return match;
-  });
+  };
   
-  // 12. Blockquotes (> text) - FIX: Tambahkan \s*
-  html = html.replace(/^\s*> (.+?)$/gm, '<blockquote class="border-l-4 border-primary bg-muted/30 p-4 my-4 rounded-r-lg">$1</blockquote>');
+  const flushList = () => {
+    if (inList && listItems.length > 0) {
+      const tag = listType === 'ul' ? 'ul' : 'ol';
+      output.push(`<${tag} class="list-disc list-inside my-4">${listItems.join('')}</${tag}>`);
+      listItems = [];
+      inList = false;
+    }
+  };
   
-  // 13. Horizontal rules (--- or ***)
-  html = html.replace(/^[\-\*]{3,}$/gm, '<hr class="my-6 border-t" />');
+  const flushBlockquote = () => {
+    if (inBlockquote && blockquoteContent.length > 0) {
+      const content = blockquoteContent.join('<br>');
+      let formatted = applyInlineFormatting(content);
+      output.push(`<blockquote class="border-l-4 border-primary bg-muted/30 p-4 my-4 rounded-r-lg">${formatted}</blockquote>`);
+      blockquoteContent = [];
+      inBlockquote = false;
+    }
+  };
   
-  // 14. Restore inline code
-  html = html.replace(/%%INLINECODE(\d+)%%/g, (match, index) => {
-    return `<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">${inlineCodes[parseInt(index)]}</code>`;
-  });
-  
-  // 15. Restore code blocks
-  html = html.replace(/%%CODEBLOCK(\d+)%%/g, (match, index) => {
-    return `<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${codeBlocks[parseInt(index)]}</code></pre>`;
-  });
-  
-  // 16. Convert double newlines to paragraphs
-  const paragraphs = html.split(/\n\n+/);
-  html = paragraphs.map(p => {
-    p = p.trim();
-    if (!p) return '';
+  const applyInlineFormatting = (text: string): string => {
+    let result = text;
     
-    // FIX: Update regex deteksi block element agar lebih lengkap dan akurat
-    // Mencegah pembungkusan <p> pada element yang sudah block-level
-    if (p.match(/^<(h[1-6]|ul|ol|li|pre|blockquote|hr|div|section|article|figure|table|thead|tbody|tr|td|th)/)) {
-      return p;
+    // Code inline (protect first)
+    const inlineCodes: string[] = [];
+    result = result.replace(/`([^`]+)`/g, (match, code) => {
+      inlineCodes.push(code);
+      return `%%INLINECODE${inlineCodes.length - 1}%%`;
+    });
+    
+    // Bold
+    result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    result = result.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    
+    // Italic
+    result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    result = result.replace(/(?<!\w)_([^_]+)_(?!\w)/g, '<em>$1</em>');
+    
+    // Strikethrough
+    result = result.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    
+    // Links
+    result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline">$1</a>');
+    
+    // Images
+    result = result.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4" />');
+    
+    // Restore inline code
+    result = result.replace(/%%INLINECODE(\d+)%%/g, (match, index) => {
+      return `<code class="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">${inlineCodes[parseInt(index)]}</code>`;
+    });
+    
+    return result;
+  };
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    
+    // Code blocks
+    if (trimmedLine.startsWith('```')) {
+      if (!inCodeBlock) {
+        flushParagraph();
+        flushList();
+        flushBlockquote();
+        inCodeBlock = true;
+        codeBlockContent = [];
+      } else {
+        const code = codeBlockContent.join('\n');
+        output.push(`<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${code}</code></pre>`);
+        inCodeBlock = false;
+        codeBlockContent = [];
+      }
+      continue;
     }
     
-    // Replace single newlines with <br> hanya untuk teks biasa
-    p = p.replace(/\n/g, '<br>');
-    return `<p class="mb-4">${p}</p>`;
-  }).join('');
+    if (inCodeBlock) {
+      codeBlockContent.push(line);
+      continue;
+    }
+    
+    // Headers (must check before paragraph)
+    const headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
+    if (headerMatch) {
+      flushParagraph();
+      flushList();
+      flushBlockquote();
+      const level = headerMatch[1].length;
+      const content = applyInlineFormatting(headerMatch[2]);
+      const sizes: Record<number, string> = {
+        1: 'text-3xl font-bold mb-4',
+        2: 'text-2xl font-bold mb-4',
+        3: 'text-xl font-bold mb-3',
+        4: 'text-lg font-bold mb-3',
+        5: 'text-base font-bold mb-2',
+        6: 'text-sm font-bold mb-2'
+      };
+      output.push(`<h${level} class="${sizes[level]}">${content}</h${level}>`);
+      continue;
+    }
+    
+    // Blockquotes
+    if (trimmedLine.startsWith('>')) {
+      flushParagraph();
+      flushList();
+      inBlockquote = true;
+      blockquoteContent.push(trimmedLine.substring(1).trim());
+      continue;
+    } else if (inBlockquote && trimmedLine === '') {
+      flushBlockquote();
+      continue;
+    }
+    
+    // Unordered lists
+    const ulMatch = trimmedLine.match(/^[\-\*]\s+(.+)$/);
+    if (ulMatch) {
+      flushParagraph();
+      flushBlockquote();
+      if (!inList || listType !== 'ul') {
+        flushList();
+        inList = true;
+        listType = 'ul';
+      }
+      const content = applyInlineFormatting(ulMatch[1]);
+      listItems.push(`<li class="ml-4">${content}</li>`);
+      continue;
+    }
+    
+    // Ordered lists
+    const olMatch = trimmedLine.match(/^\d+\.\s+(.+)$/);
+    if (olMatch) {
+      flushParagraph();
+      flushBlockquote();
+      if (!inList || listType !== 'ol') {
+        flushList();
+        inList = true;
+        listType = 'ol';
+      }
+      const content = applyInlineFormatting(olMatch[1]);
+      listItems.push(`<li class="ml-4">${content}</li>`);
+      continue;
+    }
+    
+    // Horizontal rules
+    if (/^[\-\*]{3,}$/.test(trimmedLine)) {
+      flushParagraph();
+      flushList();
+      flushBlockquote();
+      output.push('<hr class="my-6 border-t" />');
+      continue;
+    }
+    
+    // Empty line - flush buffers
+    if (trimmedLine === '') {
+      flushParagraph();
+      flushList();
+      flushBlockquote();
+      continue;
+    }
+    
+    // Regular text - add to paragraph buffer
+    flushList();
+    flushBlockquote();
+    paragraphLines.push(applyInlineFormatting(trimmedLine));
+  }
   
-  // 17. Clean up empty paragraphs & nesting issues
+  // Flush remaining buffers
+  flushParagraph();
+  flushList();
+  flushBlockquote();
+  
+  // Handle any remaining code block
+  if (inCodeBlock && codeBlockContent.length > 0) {
+    const code = codeBlockContent.join('\n');
+    output.push(`<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${code}</code></pre>`);
+  }
+  
+  // Clean up empty paragraphs
+  let html = output.join('\n');
   html = html.replace(/<p class="mb-4"><\/p>/g, '');
-  html = html.replace(/<p class="mb-4">(<h[1-6]|<ul|<ol|<blockquote|<pre|<hr)/g, '$1');
-  html = html.replace(/(<\/h[1-6]|<\/ul>|<\/ol>|<\/blockquote>|<\/pre>|<hr>)<\/p>/g, '$1');
+  html = html.replace(/<p class="mb-4"><br><\/p>/g, '');
+  html = html.replace(/\n{3,}/g, '\n\n');
   
-  return html;
+  return html.trim();
 }
 
 // ============================================================================
@@ -131,10 +245,10 @@ function cleanAIFormatting(text: string): string {
   // Remove excessive newlines
   text = text.replace(/\n{3,}/g, '\n\n');
   
-  // Remove zero-width spaces dan karakter invisible lainnya
+  // Remove zero-width spaces and invisible characters
   text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
   
-  // Trim whitespace per line dan overall
+  // Trim whitespace per line and overall
   text = text.split('\n').map(line => line.trimEnd()).join('\n').trim();
   
   return text;
@@ -306,22 +420,17 @@ export default function NewArticlePage() {
     setShowLinkModal(true);
   };
 
-  // ✅ CONVERT MARKDOWN TO HTML (Paste Handler - IMPROVED)
+  // ✅ CONVERT MARKDOWN TO HTML (Paste Handler)
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     
-    // Ambil plain text saja, buang semua style bawaan AI/Website
     const pastedText = e.clipboardData.getData('text/plain');
     
     if (!pastedText) return;
     
-    // 1. Clean AI formatting & invisible characters
     const cleanedText = cleanAIFormatting(pastedText);
-    
-    // 2. Convert Markdown to HTML
     const htmlContent = convertMarkdownToHtml(cleanedText);
     
-    // 3. Insert into editor
     if (typeof document !== 'undefined') {
       const editor = editorRef.current;
       if (!editor) return;
@@ -336,7 +445,6 @@ export default function NewArticlePage() {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = htmlContent;
         
-        // Insert nodes one by one
         while (tempDiv.firstChild) {
           range.insertNode(tempDiv.firstChild);
         }
@@ -357,7 +465,7 @@ export default function NewArticlePage() {
     }
   };
 
-  // ✅ Manual Convert Button (Untuk konten yang sudah di-paste)
+  // ✅ Manual Convert Button
   const handleConvertMarkdown = () => {
     if (typeof document === 'undefined') return;
     
@@ -366,8 +474,7 @@ export default function NewArticlePage() {
     
     const currentContent = editor.innerHTML;
     
-    // Check if content looks like Markdown
-    const hasMarkdown = /(\*\*|\_\_|^\s*#|\-\s|\d+\.\s|\[.*\]\(.*\)|\!\[.*\]\(.*\))/m.test(currentContent);
+    const hasMarkdown = /(\*\*|\_\_|^#|\-\s|\d+\.\s|\[.*\]\(.*\)|\!\[.*\]\(.*\))/m.test(currentContent);
     
     if (!hasMarkdown) {
       toast({ 
@@ -378,7 +485,6 @@ export default function NewArticlePage() {
       return;
     }
     
-    // Convert innerHTML back to text, then to HTML
     const textContent = editor.innerText;
     const convertedHtml = convertMarkdownToHtml(textContent);
     
@@ -520,7 +626,6 @@ export default function NewArticlePage() {
           height: 100%;
           border: 0;
         }
-        /* Fix untuk contenteditable agar formatting tidak rusak */
         .editor-area h1, .editor-area h2, .editor-area h3,
         .editor-area h4, .editor-area h5, .editor-area h6 {
           margin: 0;
