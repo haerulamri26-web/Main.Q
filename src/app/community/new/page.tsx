@@ -1,23 +1,5 @@
-'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { useFirestore, useUser, setDocumentNonBlocking } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Loader2, Undo, Redo, Bold, Italic, Underline, Strikethrough,
-  AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
-  Link as LinkIcon, Type, ChevronLeft, FileText, Settings, Hash,
-  Youtube, Gamepad2, Image as ImageIcon, Quote, Wand2, Eraser
-} from 'lucide-react';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
-
 // ============================================================================
-// MARKDOWN PARSER - Convert Markdown to HTML (REWRITTEN - LINE BY LINE)
+// MARKDOWN PARSER - Convert Markdown to HTML (FIXED ORDER)
 // ============================================================================
 function convertMarkdownToHtml(text: string): string {
   if (!text) return '';
@@ -41,7 +23,6 @@ function convertMarkdownToHtml(text: string): string {
   const flushParagraph = () => {
     if (paragraphLines.length > 0) {
       const content = paragraphLines.join('<br>');
-      // Apply inline formatting
       let formatted = applyInlineFormatting(content);
       output.push(`<p class="mb-4">${formatted}</p>`);
       paragraphLines = [];
@@ -128,7 +109,7 @@ function convertMarkdownToHtml(text: string): string {
       continue;
     }
     
-    // Headers (must check before paragraph)
+    // Headers
     const headerMatch = trimmedLine.match(/^(#{1,6})\s+(.+)$/);
     if (headerMatch) {
       flushParagraph();
@@ -199,7 +180,7 @@ function convertMarkdownToHtml(text: string): string {
       continue;
     }
     
-    // Empty line - flush buffers
+    // Empty line
     if (trimmedLine === '') {
       flushParagraph();
       flushList();
@@ -207,28 +188,26 @@ function convertMarkdownToHtml(text: string): string {
       continue;
     }
     
-    // Regular text - add to paragraph buffer
+    // Regular text
     flushList();
     flushBlockquote();
     paragraphLines.push(applyInlineFormatting(trimmedLine));
   }
   
-  // Flush remaining buffers
+  // Flush remaining
   flushParagraph();
   flushList();
   flushBlockquote();
   
-  // Handle any remaining code block
   if (inCodeBlock && codeBlockContent.length > 0) {
     const code = codeBlockContent.join('\n');
     output.push(`<pre class="bg-zinc-900 text-zinc-100 p-4 rounded-lg my-4 overflow-x-auto"><code>${code}</code></pre>`);
   }
   
-  // Clean up empty paragraphs
+  // Join and clean
   let html = output.join('\n');
   html = html.replace(/<p class="mb-4"><\/p>/g, '');
   html = html.replace(/<p class="mb-4"><br><\/p>/g, '');
-  html = html.replace(/\n{3,}/g, '\n\n');
   
   return html.trim();
 }
@@ -239,24 +218,14 @@ function convertMarkdownToHtml(text: string): string {
 function cleanAIFormatting(text: string): string {
   if (!text) return '';
   
-  // Remove common AI prefixes
   text = text.replace(/^(Tentu|Berikut|Ini|Here|This is|Sure|Of course)[\s\S]*?[:\-]\s*/i, '');
-  
-  // Remove excessive newlines
   text = text.replace(/\n{3,}/g, '\n\n');
-  
-  // Remove zero-width spaces and invisible characters
   text = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-  
-  // Trim whitespace per line and overall
   text = text.split('\n').map(line => line.trimEnd()).join('\n').trim();
   
   return text;
 }
 
-// ============================================================================
-// HELPER: Get plain text from HTML
-// ============================================================================
 function htmlToPlainText(html: string): string {
   if (typeof window === 'undefined') return '';
   const temp = document.createElement('div');
@@ -302,7 +271,6 @@ export default function NewArticlePage() {
     updateCounts();
   };
 
-  // ✅ Insert Link dengan Modal
   const handleInsertLink = () => {
     const selection = window.getSelection();
     if (selection && selection.toString().length > 0) {
@@ -352,7 +320,6 @@ export default function NewArticlePage() {
     updateCounts();
   };
 
-  // ✅ Insert YouTube Embed
   const handleInsertYoutube = () => {
     setShowYoutubeModal(true);
   };
@@ -413,14 +380,13 @@ export default function NewArticlePage() {
     updateCounts();
   };
 
-  // ✅ Insert Game Link (Special for MAIN Q games)
   const handleInsertGameLink = () => {
     setLinkUrl('https://mainq.my.id/game/');
     setLinkText('Mainkan Game Edukasi Ini');
     setShowLinkModal(true);
   };
 
-  // ✅ CONVERT MARKDOWN TO HTML (Paste Handler)
+  // ✅ FIXED: Paste Handler with proper order
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     
@@ -442,14 +408,23 @@ export default function NewArticlePage() {
         const range = selection.getRangeAt(0);
         range.deleteContents();
         
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = htmlContent;
+        // Create a wrapper div
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = htmlContent;
         
-        while (tempDiv.firstChild) {
-          range.insertNode(tempDiv.firstChild);
-        }
+        // Get all child nodes as array
+        const nodes = Array.from(wrapper.childNodes);
         
-        range.collapse(false);
+        // Insert each node in order
+        nodes.forEach((node, index) => {
+          if (index === 0) {
+            range.insertNode(node);
+          } else {
+            range.insertNode(node);
+          }
+          range.collapse(false);
+        });
+        
         selection.removeAllRanges();
         selection.addRange(range);
       } else {
@@ -460,12 +435,11 @@ export default function NewArticlePage() {
       
       toast({ 
         title: '✅ Markdown dikonversi!', 
-        description: 'Format bold, italic, heading, dan link sudah dikonversi ke HTML.' 
+        description: 'Format berhasil dikonversi ke HTML.' 
       });
     }
   };
 
-  // ✅ Manual Convert Button
   const handleConvertMarkdown = () => {
     if (typeof document === 'undefined') return;
     
@@ -480,7 +454,7 @@ export default function NewArticlePage() {
       toast({ 
         variant: 'destructive', 
         title: 'Tidak ada Markdown terdeteksi',
-        description: 'Konten sudah dalam format HTML atau tidak ada format Markdown.'
+        description: 'Konten sudah dalam format HTML.'
       });
       return;
     }
@@ -493,18 +467,17 @@ export default function NewArticlePage() {
     
     toast({ 
       title: '✅ Konversi selesai!', 
-      description: 'Semua format Markdown telah dikonversi ke HTML.' 
+      description: 'Semua format Markdown telah dikonversi.' 
     });
   };
 
-  // ✅ Clear Formatting
   const handleClearFormatting = () => {
     if (typeof document === 'undefined') return;
     
     const editor = editorRef.current;
     if (!editor) return;
     
-    if (confirm('Hapus semua formatting dan kembalikan ke teks polos?')) {
+    if (confirm('Hapus semua formatting?')) {
       const textContent = editor.innerText;
       editor.innerHTML = `<p class="mb-4">${textContent}</p>`;
       updateCounts();
@@ -643,7 +616,6 @@ export default function NewArticlePage() {
         }
       `}</style>
       
-      {/* Header */}
       <header className="bg-white border-b sticky top-0 z-50 px-4 py-3">
         <div className="container mx-auto max-w-5xl flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -677,7 +649,6 @@ export default function NewArticlePage() {
       </header>
 
       <main className="container mx-auto max-w-4xl mt-8 px-4">
-        {/* Title Input */}
         <div className="bg-white rounded-xl shadow-sm border mb-4 overflow-hidden">
           <input
             type="text"
@@ -688,7 +659,6 @@ export default function NewArticlePage() {
           />
         </div>
 
-        {/* Toolbar */}
         <div className="bg-white rounded-t-xl border border-b-0 px-4 py-2 flex items-center flex-wrap gap-1 sticky top-[65px] z-40 shadow-sm">
           <ToolbarButton command="undo" icon={Undo} title="Undo" />
           <ToolbarButton command="redo" icon={Redo} title="Redo" />
@@ -725,7 +695,6 @@ export default function NewArticlePage() {
           <ToolbarButton icon={Eraser} title="Hapus Formatting" onClickOverride={handleClearFormatting} />
         </div>
 
-        {/* Editor Area */}
         <div className="bg-white rounded-b-xl border border-t-0 p-8 min-h-[500px] shadow-sm">
           <div
             ref={editorRef}
@@ -737,7 +706,6 @@ export default function NewArticlePage() {
           />
         </div>
 
-        {/* Settings */}
         <div className="bg-white rounded-xl shadow-sm border mt-6 p-6">
           <h3 className="text-sm font-bold text-gray-700 mb-6 flex items-center gap-2 uppercase tracking-wider">
             <Settings className="h-4 w-4" /> Pengaturan Postingan
@@ -773,7 +741,6 @@ export default function NewArticlePage() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-gray-500 text-sm">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-1.5 font-medium"><Type className="h-4 w-4" /> {wordCount} kata</span>
@@ -785,7 +752,6 @@ export default function NewArticlePage() {
         </div>
       </main>
 
-      {/* Modal Insert Link */}
       {showLinkModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -824,7 +790,6 @@ export default function NewArticlePage() {
         </div>
       )}
 
-      {/* Modal Insert YouTube */}
       {showYoutubeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
