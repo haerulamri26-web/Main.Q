@@ -1,9 +1,8 @@
 'use client';
-
 import { useUser, useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp, query, orderBy, where, limit } from 'firebase/firestore';
-import { 
-  Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, Shrink, 
+import {
+  Loader2, Expand, Eye, User, AlertTriangle, Share2, Copy, Shrink,
   Gamepad2, Flame, ChevronRight, Home, BookOpen, Layers, Info, HelpCircle, Trophy, Lightbulb,
   GraduationCap, Clock, Target, CheckCircle, ChevronDown, ChevronUp, Monitor, Maximize2
 } from 'lucide-react';
@@ -26,26 +25,26 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 // INTERFACES
 // ============================================================================
-interface Game { 
-  id: string; 
-  title: string; 
-  description: string; 
-  htmlCode: string; 
-  class: string; 
-  subject: string; 
-  views: number; 
-  authorName: string; 
+interface Game {
+  id: string;
+  title: string;
+  description: string;
+  htmlCode: string;
+  class: string;
+  subject: string;
+  views: number;
+  authorName: string;
   userId: string;
   uploadDate?: any;
 }
 
-interface Comment { 
-  id: string; 
-  userId: string; 
-  authorName: string; 
-  authorPhotoURL?: string; 
-  text: string; 
-  createdAt: any; 
+interface Comment {
+  id: string;
+  userId: string;
+  authorName: string;
+  authorPhotoURL?: string;
+  text: string;
+  createdAt: any;
 }
 
 // ============================================================================
@@ -116,13 +115,10 @@ export default function GameClient({ id }: { id: string }) {
   // Firestore Queries
   const gameDocRef = useMemoFirebase(() => (firestore && id ? doc(firestore, 'publishedGames', id) : null), [firestore, id]);
   const { data: game, isLoading } = useDoc<Game>(gameDocRef);
-
   const commentsQuery = useMemoFirebase(() => (firestore && id ? query(collection(firestore, 'publishedGames', id, 'comments'), orderBy('createdAt', 'desc')) : null), [firestore, id]);
   const { data: comments, isLoading: isLoadingComments } = useCollection<Comment>(commentsQuery);
-
   const recommendedQuery = useMemoFirebase(() => (firestore && game ? query(collection(firestore, 'publishedGames'), where('subject', '==', game.subject), limit(6)) : null), [firestore, game]);
   const { data: recommendedGames, isLoading: isLoadingRecommended } = useCollection<Game>(recommendedQuery);
-
   const popularQuery = useMemoFirebase(() => (firestore ? query(collection(firestore, 'publishedGames'), orderBy('views', 'desc'), limit(4)) : null), [firestore]);
   const { data: popularGames, isLoading: isLoadingPopular } = useCollection<Game>(popularQuery);
 
@@ -134,39 +130,13 @@ export default function GameClient({ id }: { id: string }) {
   useEffect(() => {
     if (game) {
       const subject = `Laporan Game: ${game.title}`;
-      const body = `Saya melaporkan game ini: ${window.location.href}\n\nAlasan:`;
+      const body = `Saya melaporkan game ini: ${window.location.href}\nAlasan:`;
       setReportUrl(`mailto:haerulamri26@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     }
   }, [game]);
 
-  // ✅ Inject Client-Side JSON-LD (FAQ)
-  useEffect(() => {
-    if (!game) return;
-    
-    const faqSchema = {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": generateFAQItems(game.subject, game.class).map(item => ({
-        "@type": "Question",
-        "name": item.q,
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": item.a
-        }
-      }))
-    };
-
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
-    script.textContent = JSON.stringify(faqSchema);
-    document.head.appendChild(script);
-
-    return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
-    };
-  }, [game]);
+  // ✅ HAPUS useEffect FAQ Schema Injection (Sudah ada di page.tsx)
+  // useEffect untuk FAQ Schema sudah dihapus untuk menghindari duplikasi
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -191,13 +161,14 @@ export default function GameClient({ id }: { id: string }) {
 
   const handleShareWhatsApp = () => {
     if (!game) return;
-    const text = `🎮 Ayo mainkan: ${game.title}\n\nMedia pembelajaran interaktif untuk ${getSubjectDisplayName(game.subject)} ${game.class}.\n\n🔗 ${window.location.href}\n\n#GameEdukasi #MAINQ #KurikulumMerdeka`;
+    const text = `🎮 Ayo mainkan: ${game.title}\nMedia pembelajaran interaktif untuk ${getSubjectDisplayName(game.subject)} ${game.class}.\n🔗 ${window.location.href}\n#GameEdukasi #MAINQ #KurikulumMerdeka`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleCommentSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!firestore || !user || !comment.trim() || !game) return;
+    
     setIsSubmitting(true);
     try {
       await addDoc(collection(firestore, 'publishedGames', id, 'comments'), {
@@ -225,8 +196,8 @@ export default function GameClient({ id }: { id: string }) {
       toast({ title: "💬 Komentar terkirim!" });
     } catch (err) {
       toast({ title: "❌ Gagal mengirim komentar", variant: "destructive" });
-    } finally { 
-      setIsSubmitting(false); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -261,7 +232,7 @@ export default function GameClient({ id }: { id: string }) {
 
   return (
     <article itemScope itemType="https://schema.org/LearningResource" className="w-full">
-      {/* ✅ Breadcrumbs - SEO Navigation */}
+      {/* Breadcrumbs - SEO Navigation */}
       <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6 overflow-hidden" aria-label="Breadcrumb">
         <Link href="/" className="hover:text-primary flex items-center gap-1 transition-colors flex-shrink-0">
           <Home className="w-3 h-3" /> Beranda
@@ -270,7 +241,7 @@ export default function GameClient({ id }: { id: string }) {
         <span className="font-medium text-foreground truncate" itemProp="name">{game.title}</span>
       </nav>
 
-      {/* ✅ Header Utama */}
+      {/* Header Utama */}
       <header className="mb-8 space-y-4">
         <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight font-headline leading-tight" itemProp="name">
           {game.title}
@@ -280,13 +251,13 @@ export default function GameClient({ id }: { id: string }) {
             {subjectDisplay}
           </Badge>
           <div className="flex items-center gap-1 text-muted-foreground">
-            <User className="w-4 h-4" /> 
+            <User className="w-4 h-4" />
             <span itemProp="author" itemScope itemType="https://schema.org/Person">
               <span itemProp="name">{game.authorName}</span>
             </span>
           </div>
           <div className="flex items-center gap-1 text-muted-foreground">
-            <Eye className="w-4 h-4" /> 
+            <Eye className="w-4 h-4" />
             <span itemProp="interactionStatistic" itemScope itemType="https://schema.org/InteractionCounter">
               <span itemProp="userInteractionCount">{game.views}</span> Tayangan
             </span>
@@ -308,7 +279,7 @@ export default function GameClient({ id }: { id: string }) {
         </div>
       </header>
 
-      {/* ✅ AdSense Slot: Atas Game */}
+      {/* AdSense Slot: Atas Game */}
       <AdUnit slot="1234567890" className="w-full min-h-[90px] bg-muted/20 border-y mb-8 flex items-center justify-center text-xs text-muted-foreground" />
 
       {/* Main Layout Grid */}
@@ -316,14 +287,13 @@ export default function GameClient({ id }: { id: string }) {
         "grid gap-8 transition-all duration-500",
         isTheatreMode ? "grid-cols-1" : "lg:grid-cols-4"
       )}>
-        {/* ✅ Main Content Column */}
+        {/* Main Content Column */}
         <div className={cn(
           "space-y-10",
           !isTheatreMode && "lg:col-span-3"
         )}>
-          
           {/* 🎮 Game Container */}
-          <section 
+          <section
             ref={iframeContainerRef}
             className={cn(
               "relative w-full aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-2xl transition-all duration-500",
@@ -337,16 +307,17 @@ export default function GameClient({ id }: { id: string }) {
               sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock"
               allowFullScreen
               loading="lazy"
+              referrerPolicy="no-referrer"
             />
             <div className="absolute bottom-4 right-4 flex gap-2">
-              <Button 
+              <Button
                 variant="secondary" size="sm" onClick={() => setIsTheatreMode(!isTheatreMode)}
                 className="bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all hidden md:flex"
               >
                 <Monitor className="w-4 h-4 mr-2" />
                 {isTheatreMode ? "Mode Standar" : "Mode Teater"}
               </Button>
-              <Button 
+              <Button
                 variant="secondary" size="sm" onClick={handleFullscreen}
                 className="bg-black/50 text-white hover:bg-black/80 backdrop-blur-sm transition-all"
               >
@@ -410,7 +381,7 @@ export default function GameClient({ id }: { id: string }) {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <HelpCircle className="w-5 h-5 text-primary" /> 
+                      <HelpCircle className="w-5 h-5 text-primary" />
                       Cara Bermain
                     </CardTitle>
                   </CardHeader>
@@ -426,7 +397,7 @@ export default function GameClient({ id }: { id: string }) {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
-                      <Lightbulb className="w-5 h-5 text-orange-500" /> 
+                      <Lightbulb className="w-5 h-5 text-orange-500" />
                       Manfaat Belajar
                     </CardTitle>
                   </CardHeader>
@@ -452,7 +423,7 @@ export default function GameClient({ id }: { id: string }) {
               {/* Deskripsi Materi */}
               <section className="space-y-4" itemProp="description">
                 <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
-                  <BookOpen className="w-6 h-6 text-primary" /> 
+                  <BookOpen className="w-6 h-6 text-primary" />
                   Deskripsi Materi
                 </h2>
                 <div className="p-6 bg-secondary/30 rounded-xl border">
@@ -472,7 +443,7 @@ export default function GameClient({ id }: { id: string }) {
               {/* Panduan untuk Guru */}
               <section className="space-y-4">
                 <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
-                  <GraduationCap className="w-6 h-6 text-primary" /> 
+                  <GraduationCap className="w-6 h-6 text-primary" />
                   Panduan untuk Guru
                 </h2>
                 <Card className="bg-amber-50/50 border-amber-200">
@@ -491,28 +462,28 @@ export default function GameClient({ id }: { id: string }) {
                 </Card>
               </section>
 
-              {/* FAQ Section */}
+              {/* FAQ Section - HTML Only (No Schema Injection) */}
               <section className="space-y-4">
                 <h2 className="text-xl md:text-2xl font-bold font-headline flex items-center gap-2">
-                  <HelpCircle className="w-6 h-6 text-primary" /> 
+                  <HelpCircle className="w-6 h-6 text-primary" />
                   Pertanyaan Umum
                 </h2>
                 <div className="space-y-2">
                   {faqItems.map((item, index) => (
-                    <Collapsible 
+                    <Collapsible
                       key={index}
                       open={openFAQ === item.q}
                       onOpenChange={() => setOpenFAQ(openFAQ === item.q ? null : item.q)}
                       className="border rounded-lg overflow-hidden"
                     >
                       <CollapsibleTrigger asChild>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           className="w-full justify-between text-left font-medium h-auto p-4 hover:bg-muted/50 rounded-none"
                         >
                           <span className="pr-4">{item.q}</span>
-                          {openFAQ === item.q ? 
-                            <ChevronUp className="w-4 h-4 flex-shrink-0" /> : 
+                          {openFAQ === item.q ?
+                            <ChevronUp className="w-4 h-4 flex-shrink-0" /> :
                             <ChevronDown className="w-4 h-4 flex-shrink-0" />
                           }
                         </Button>
@@ -528,25 +499,24 @@ export default function GameClient({ id }: { id: string }) {
 
             {/* Side content when in theatre mode */}
             <div className={cn(isTheatreMode ? "space-y-8" : "hidden")}>
-               <GameSidebarContent 
-                  game={game} 
-                  subjectDisplay={subjectDisplay} 
-                  reportUrl={reportUrl}
-                  isLoadingRecommended={isLoadingRecommended}
-                  isLoadingPopular={isLoadingPopular}
-                  filteredRecommended={filteredRecommended}
-                  popularGames={popularGames}
-               />
+              <GameSidebarContent
+                game={game}
+                subjectDisplay={subjectDisplay}
+                reportUrl={reportUrl}
+                isLoadingRecommended={isLoadingRecommended}
+                isLoadingPopular={isLoadingPopular}
+                filteredRecommended={filteredRecommended}
+                popularGames={popularGames}
+              />
             </div>
           </div>
 
           {/* Diskusi & Komentar */}
           <section className="pt-10 border-t" id="komentar">
             <h2 className="text-xl md:text-2xl font-bold font-headline mb-8 flex items-center gap-2">
-              <Layers className="w-6 h-6 text-primary" /> 
+              <Layers className="w-6 h-6 text-primary" />
               Diskusi & Komentar ({comments?.length || 0})
             </h2>
-            
             {user ? (
               <form onSubmit={handleCommentSubmit} className="mb-10 flex gap-4">
                 <Avatar className="h-10 w-10">
@@ -554,16 +524,16 @@ export default function GameClient({ id }: { id: string }) {
                   <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-2">
-                  <Textarea 
-                    value={comment} 
-                    onChange={e => setComment(e.target.value)} 
-                    placeholder="Bagikan masukan atau pengalaman Anda..." 
+                  <Textarea
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                    placeholder="Bagikan masukan atau pengalaman Anda..."
                     rows={3}
                     className="resize-none"
                   />
                   <div className="flex justify-end">
                     <Button disabled={isSubmitting || !comment.trim()} size="sm">
-                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />} 
+                      {isSubmitting && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       Kirim Komentar
                     </Button>
                   </div>
@@ -579,7 +549,6 @@ export default function GameClient({ id }: { id: string }) {
                 </CardContent>
               </Card>
             )}
-            
             <div className="space-y-6">
               {isLoadingComments ? (
                 <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
@@ -608,12 +577,12 @@ export default function GameClient({ id }: { id: string }) {
           </section>
         </div>
 
-        {/* ✅ Sidebar Column (Standard Mode) */}
+        {/* Sidebar Column (Standard Mode) */}
         {!isTheatreMode && (
           <aside className="space-y-8">
-            <GameSidebarContent 
-              game={game} 
-              subjectDisplay={subjectDisplay} 
+            <GameSidebarContent
+              game={game}
+              subjectDisplay={subjectDisplay}
               reportUrl={reportUrl}
               isLoadingRecommended={isLoadingRecommended}
               isLoadingPopular={isLoadingPopular}
@@ -630,14 +599,14 @@ export default function GameClient({ id }: { id: string }) {
 // ============================================================================
 // HELPER COMPONENT: Sidebar Content
 // ============================================================================
-function GameSidebarContent({ 
-  game, 
-  subjectDisplay, 
-  reportUrl, 
-  isLoadingRecommended, 
-  isLoadingPopular, 
-  filteredRecommended, 
-  popularGames 
+function GameSidebarContent({
+  game,
+  subjectDisplay,
+  reportUrl,
+  isLoadingRecommended,
+  isLoadingPopular,
+  filteredRecommended,
+  popularGames
 }: any) {
   return (
     <div className="space-y-8">
@@ -670,13 +639,13 @@ function GameSidebarContent({
         </CardContent>
       </Card>
 
-      {/* ✅ AdSense Slot: Sidebar (Vertical) */}
+      {/* AdSense Slot: Sidebar (Vertical) */}
       <AdUnit slot="1122334455" format="vertical" responsive="false" className="w-full min-h-[400px] bg-muted/20 border flex items-center justify-center text-xs text-muted-foreground sticky top-24" />
 
       {/* Game Sejenis */}
       <section className="space-y-4 pt-4">
         <h3 className="font-bold flex items-center gap-2 font-headline text-lg">
-          <Flame className="w-5 h-5 text-orange-500" /> 
+          <Flame className="w-5 h-5 text-orange-500" />
           Game Sejenis
         </h3>
         <div className="space-y-3">
@@ -684,9 +653,9 @@ function GameSidebarContent({
             Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
           ) : filteredRecommended.length ? (
             filteredRecommended.map((rec: any) => (
-              <Link 
-                key={rec.id} 
-                href={`/game/${rec.id}`} 
+              <Link
+                key={rec.id}
+                href={`/game/${rec.id}`}
                 className="block p-3 rounded-lg border bg-card hover:border-primary hover:bg-primary/5 transition-all group"
               >
                 <p className="text-sm font-medium group-hover:text-primary line-clamp-2 leading-snug">{rec.title}</p>
@@ -702,16 +671,16 @@ function GameSidebarContent({
       {/* Popular Games */}
       <section className="space-y-4">
         <h3 className="font-bold flex items-center gap-2 font-headline text-lg">
-          <Trophy className="w-5 h-5 text-yellow-500" /> 
+          <Trophy className="w-5 h-5 text-yellow-500" />
           Paling Populer
         </h3>
         <div className="space-y-3">
           {isLoadingPopular ? (
             Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)
           ) : popularGames?.map((pop: any) => (
-            <Link 
-              key={pop.id} 
-              href={`/game/${pop.id}`} 
+            <Link
+              key={pop.id}
+              href={`/game/${pop.id}`}
               className="flex gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
             >
               <div className="w-16 h-12 bg-slate-800 rounded flex-shrink-0 overflow-hidden relative">
